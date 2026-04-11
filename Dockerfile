@@ -1,6 +1,5 @@
 # ── Stage 1: dependency cache planner ────────────────────────────────────────
-FROM rust:1.87-slim-bookworm AS chef
-RUN cargo install cargo-chef --locked
+FROM lukemathwalker/cargo-chef:latest-rust-1.87-bookworm AS chef
 WORKDIR /app
 
 # ── Stage 2: generate the recipe (only Cargo files needed) ───────────────────
@@ -12,6 +11,12 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 # ── Stage 3: build dependencies then the app ─────────────────────────────────
 FROM chef AS builder
+
+# pkg-config + libssl-dev are required to compile native-tls (used by reqwest)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+  && rm -rf /var/lib/apt/lists/*
 
 # Build dependencies first (cached unless Cargo.toml/Cargo.lock change)
 COPY --from=planner /app/recipe.json recipe.json
