@@ -13,8 +13,10 @@ WORKDIR /app
 # Copy manifests first — Docker cache invalidates only when these change.
 COPY Cargo.toml Cargo.lock ./
 
-# Create a stub src/main.rs so cargo can compile dependencies without the real source
-RUN mkdir -p src && echo 'fn main() {}' > src/main.rs \
+# Stubs for both lib and bin targets (Cargo.toml declares both [lib] and [[bin]])
+RUN mkdir -p src \
+  && echo 'fn main() {}' > src/main.rs \
+  && touch src/lib.rs \
   && cargo build --release \
   && rm -rf src
 
