@@ -1,0 +1,27 @@
+# Rust build artifacts
+target/
+
+# Environment files — never bake secrets into the image
+.env
+.env.*
+*.env.local
+
+# Dev/tooling files not needed in the build context
+.git/
+.claude/
+.gitignore
+.dockerignore
+
+# Documentation and test files (not needed for release build)
+docs/
+tests/
+scripts/
+config/
+
+# Postman and spec files (openapi yaml is already copied explicitly)
+PunchCraft.postman_collection.json
+*.docx
+
+# Misc
+tmp/
+*.log
