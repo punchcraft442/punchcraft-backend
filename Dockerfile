@@ -1,39 +1,34 @@
-# ── Stage 1: dependency cache planner ────────────────────────────────────────
-FROM lukemathwalker/cargo-chef:latest-rust-1.87-bookworm AS chef
-WORKDIR /app
+# ── Stage 1: builder ──────────────────────────────────────────────────────────
+FROM rust:bookworm AS builder
 
-# ── Stage 2: generate the recipe (only Cargo files needed) ───────────────────
-FROM chef AS planner
-COPY Cargo.toml Cargo.lock ./
-# src must exist for cargo-chef to resolve the workspace correctly
-COPY src ./src
-RUN cargo chef prepare --recipe-path recipe.json
-
-# ── Stage 3: build dependencies then the app ─────────────────────────────────
-FROM chef AS builder
-
-# pkg-config + libssl-dev are required to compile native-tls (used by reqwest)
+# Build dependencies for native-tls (used by reqwest → Cloudinary, Resend, MongoDB)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev \
   && rm -rf /var/lib/apt/lists/*
 
-# Build dependencies first (cached unless Cargo.toml/Cargo.lock change)
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
+WORKDIR /app
 
-# Copy source and compile
+# Cache dependency compilation separately from application code.
+# Copy manifests first — Docker cache invalidates only when these change.
 COPY Cargo.toml Cargo.lock ./
+
+# Create a stub src/main.rs so cargo can compile dependencies without the real source
+RUN mkdir -p src && echo 'fn main() {}' > src/main.rs \
+  && cargo build --release \
+  && rm -rf src
+
+# Now copy the real source and build the application
 COPY src ./src
-# Punchcraft-openapi.yaml is embedded at compile time via include_str!
 COPY Punchcraft-openapi.yaml ./Punchcraft-openapi.yaml
 
-RUN cargo build --release --bin punchcraft
+# Touch main.rs to force Rust to relink (avoids stale cached artifact)
+RUN touch src/main.rs && cargo build --release --bin punchcraft
 
-# ── Stage 4: minimal runtime image ───────────────────────────────────────────
+# ── Stage 2: minimal runtime image ───────────────────────────────────────────
 FROM debian:bookworm-slim AS runtime
 
-# Install runtime dependencies: TLS certs + OpenSSL (for reqwest native-tls)
+# Runtime TLS support for outbound HTTPS (Resend, Cloudinary, MongoDB Atlas)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
@@ -44,15 +39,12 @@ RUN useradd --uid 1001 --no-create-home --shell /bin/false punchcraft
 
 WORKDIR /app
 
-# Copy the compiled binary
 COPY --from=builder /app/target/release/punchcraft ./punchcraft
 
 RUN chown punchcraft:punchcraft ./punchcraft
 
 USER punchcraft
 
-# Default port — override BIND_ADDR at runtime if needed
 EXPOSE 8080
 
-# All config is injected via environment variables at runtime (no .env in image)
 CMD ["./punchcraft"]
