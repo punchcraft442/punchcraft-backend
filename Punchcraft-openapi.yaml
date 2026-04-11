@@ -1,0 +1,3018 @@
+﻿openapi: 3.0.3
+info:
+  title: PunchCraft API
+  version: 1.0.0
+  description: |
+    REST API for PunchCraft, a boxing ecosystem platform for profiling, verifying,
+    and connecting fighters, gyms, coaches, referees/judges, promoters,
+    matchmakers, and fans.
+
+    This specification is based on the PunchCraft project brief and scope.
+servers:
+  - url: https://api.punchcraft.com/api/v1
+    description: Production
+  - url: https://staging-api.punchcraft.com/api/v1
+    description: Staging
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Fighters
+  - name: Gyms
+  - name: Coaches
+  - name: Officials
+  - name: Promoters
+  - name: Matchmakers
+  - name: Fans
+  - name: Directories
+  - name: Contact Requests
+  - name: Favorites
+  - name: Reports
+  - name: Notifications
+  - name: Uploads
+  - name: Metadata
+  - name: Admin
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRegisterResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/verify-email:
+    get:
+      tags: [Auth]
+      summary: Activate account via email link
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout and invalidate refresh token
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Password reset email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /auth/change-password:
+    patch:
+      tags: [Auth]
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+    patch:
+      tags: [Users]
+      summary: Update current user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+
+  /profiles/fighters:
+    post:
+      tags: [Fighters]
+      summary: Create fighter profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFighterProfileRequest'
+      responses:
+        '201':
+          description: Fighter profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FighterProfileResponse'
+    get:
+      tags: [Fighters]
+      summary: List fighter profiles
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/VerificationTierParam'
+        - $ref: '#/components/parameters/WeightClassParam'
+        - $ref: '#/components/parameters/SortParam'
+      security: []
+      responses:
+        '200':
+          description: Paginated fighter profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FighterProfileListResponse'
+
+  /profiles/fighters/{id}:
+    get:
+      tags: [Fighters]
+      summary: Get fighter profile by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Fighter profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FighterProfileResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags: [Fighters]
+      summary: Update fighter profile
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFighterProfileRequest'
+      responses:
+        '200':
+          description: Fighter profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FighterProfileResponse'
+
+  /profiles/fighters/{id}/submit:
+    post:
+      tags: [Fighters]
+      summary: Submit fighter profile for review
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/fighters/{id}/fight-history:
+    post:
+      tags: [Fighters]
+      summary: Add fight history entry
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFightHistoryRequest'
+      responses:
+        '201':
+          description: Fight history entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FightHistoryResponse'
+
+  /profiles/gyms:
+    post:
+      tags: [Gyms]
+      summary: Create gym profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGymProfileRequest'
+      responses:
+        '201':
+          description: Gym profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GymProfileResponse'
+    get:
+      tags: [Gyms]
+      summary: List gym profiles
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/VerificationTierParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated gym profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GymProfileListResponse'
+
+  /profiles/gyms/{id}:
+    get:
+      tags: [Gyms]
+      summary: Get gym profile by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Gym profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GymProfileResponse'
+    patch:
+      tags: [Gyms]
+      summary: Update gym profile
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGymProfileRequest'
+      responses:
+        '200':
+          description: Gym profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GymProfileResponse'
+
+  /profiles/gyms/{id}/submit:
+    post:
+      tags: [Gyms]
+      summary: Submit gym profile for review
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/gyms/{gymId}/coaches/{coachId}:
+    post:
+      tags: [Gyms]
+      summary: Link coach to gym
+      parameters:
+        - name: gymId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: coachId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Coach linked to gym
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/gyms/{gymId}/fighters/{fighterId}:
+    post:
+      tags: [Gyms]
+      summary: Add fighter to gym roster
+      parameters:
+        - name: gymId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fighterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Fighter association initiated or completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/coaches:
+    post:
+      tags: [Coaches]
+      summary: Create coach profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCoachProfileRequest'
+      responses:
+        '201':
+          description: Coach profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfileResponse'
+    get:
+      tags: [Coaches]
+      summary: List coach profiles
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/VerificationTierParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated coach profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfileListResponse'
+
+  /profiles/coaches/{id}:
+    get:
+      tags: [Coaches]
+      summary: Get coach profile by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Coach profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfileResponse'
+    patch:
+      tags: [Coaches]
+      summary: Update coach profile
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCoachProfileRequest'
+      responses:
+        '200':
+          description: Coach profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfileResponse'
+
+  /profiles/coaches/{id}/submit:
+    post:
+      tags: [Coaches]
+      summary: Submit coach profile for review
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/coaches/{id}/certifications:
+    post:
+      tags: [Coaches]
+      summary: Upload coach certification metadata
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadDocumentReferenceRequest'
+      responses:
+        '201':
+          description: Certification uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentReferenceResponse'
+
+  /profiles/officials:
+    post:
+      tags: [Officials]
+      summary: Create referee/judge profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOfficialProfileRequest'
+      responses:
+        '201':
+          description: Official profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficialProfileResponse'
+    get:
+      tags: [Officials]
+      summary: List referee/judge profiles
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/VerificationTierParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated official profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficialProfileListResponse'
+
+  /profiles/officials/{id}:
+    get:
+      tags: [Officials]
+      summary: Get referee/judge profile by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Official profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficialProfileResponse'
+    patch:
+      tags: [Officials]
+      summary: Update referee/judge profile
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOfficialProfileRequest'
+      responses:
+        '200':
+          description: Official profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficialProfileResponse'
+
+  /profiles/officials/{id}/submit:
+    post:
+      tags: [Officials]
+      summary: Submit referee/judge profile for review
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/officials/{id}/credentials:
+    post:
+      tags: [Officials]
+      summary: Upload official credentials metadata
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadDocumentReferenceRequest'
+      responses:
+        '201':
+          description: Credentials uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentReferenceResponse'
+
+  /profiles/promoters:
+    post:
+      tags: [Promoters]
+      summary: Create promoter profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePromoterProfileRequest'
+      responses:
+        '201':
+          description: Promoter profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoterProfileResponse'
+    get:
+      tags: [Promoters]
+      summary: List promoter profiles
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/VerificationTierParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated promoter profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoterProfileListResponse'
+
+  /profiles/promoters/{id}:
+    get:
+      tags: [Promoters]
+      summary: Get promoter profile by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Promoter profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoterProfileResponse'
+    patch:
+      tags: [Promoters]
+      summary: Update promoter profile
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePromoterProfileRequest'
+      responses:
+        '200':
+          description: Promoter profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoterProfileResponse'
+
+  /profiles/promoters/{id}/submit:
+    post:
+      tags: [Promoters]
+      summary: Submit promoter profile for review
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/matchmakers:
+    post:
+      tags: [Matchmakers]
+      summary: Create matchmaker profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMatchmakerProfileRequest'
+      responses:
+        '201':
+          description: Matchmaker profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchmakerProfileResponse'
+    get:
+      tags: [Matchmakers]
+      summary: List matchmaker profiles
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/VerificationTierParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated matchmaker profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchmakerProfileListResponse'
+
+  /profiles/matchmakers/{id}:
+    get:
+      tags: [Matchmakers]
+      summary: Get matchmaker profile by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Matchmaker profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchmakerProfileResponse'
+    patch:
+      tags: [Matchmakers]
+      summary: Update matchmaker profile
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMatchmakerProfileRequest'
+      responses:
+        '200':
+          description: Matchmaker profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchmakerProfileResponse'
+
+  /profiles/matchmakers/{id}/submit:
+    post:
+      tags: [Matchmakers]
+      summary: Submit matchmaker profile for review
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /profiles/fans:
+    post:
+      tags: [Fans]
+      summary: Create fan profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFanProfileRequest'
+      responses:
+        '201':
+          description: Fan profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanProfileResponse'
+    get:
+      tags: [Fans]
+      summary: List fan profiles
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated fan profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanProfileListResponse'
+
+  /profiles/fans/{id}:
+    get:
+      tags: [Fans]
+      summary: Get fan profile by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Fan profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanProfileResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags: [Fans]
+      summary: Update fan profile
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFanProfileRequest'
+      responses:
+        '200':
+          description: Fan profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanProfileResponse'
+
+  /profiles/fans/{id}/submit:
+    post:
+      tags: [Fans]
+      summary: Submit fan profile for review
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /directories:
+    get:
+      tags: [Directories]
+      summary: Search public directory across roles
+      security: []
+      parameters:
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/RoleType'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/RegionParam'
+        - $ref: '#/components/parameters/CityParam'
+        - $ref: '#/components/parameters/VerificationTierParam'
+        - $ref: '#/components/parameters/WeightClassParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated public directory results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectorySearchResponse'
+
+  /contact-requests:
+    post:
+      tags: [Contact Requests]
+      summary: Send contact request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContactRequestRequest'
+      responses:
+        '201':
+          description: Contact request sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactRequestResponse'
+    get:
+      tags: [Contact Requests]
+      summary: Get my contact requests
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated contact requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactRequestListResponse'
+
+  /contact-requests/{id}:
+    patch:
+      tags: [Contact Requests]
+      summary: Update contact request status
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateContactRequestRequest'
+      responses:
+        '200':
+          description: Contact request updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactRequestResponse'
+
+  /favorites:
+    post:
+      tags: [Favorites]
+      summary: Add profile to favorites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddFavoriteRequest'
+      responses:
+        '201':
+          description: Favorite added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteResponse'
+    get:
+      tags: [Favorites]
+      summary: Get favorite profiles
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated favorites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteListResponse'
+
+  /favorites/{profileId}:
+    delete:
+      tags: [Favorites]
+      summary: Remove profile from favorites
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Favorite removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /reports:
+    post:
+      tags: [Reports]
+      summary: Report a profile or content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReportRequest'
+      responses:
+        '201':
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Get notifications
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification as read
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /uploads/media:
+    post:
+      tags: [Uploads]
+      summary: Upload media file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Media uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadMediaResponse'
+
+  /uploads/documents/verification:
+    post:
+      tags: [Uploads]
+      summary: Upload verification document
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Verification document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadDocumentResponse'
+
+  /metadata/weight-classes:
+    get:
+      tags: [Metadata]
+      summary: Get supported weight classes
+      security: []
+      responses:
+        '200':
+          description: Weight classes list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightClassListResponse'
+
+  /metadata/regions:
+    get:
+      tags: [Metadata]
+      summary: Get supported regions
+      security: []
+      responses:
+        '200':
+          description: Regions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionListResponse'
+
+  /metadata/verification-tiers:
+    get:
+      tags: [Metadata]
+      summary: Get verification tiers
+      security: []
+      responses:
+        '200':
+          description: Verification tiers list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationTierListResponse'
+
+  /admin/approval-queue:
+    get:
+      tags: [Admin]
+      summary: Get approval queue
+      parameters:
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/RoleType'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProfileStatus'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Approval queue results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalQueueResponse'
+
+  /admin/profiles/{profileId}/approve:
+    post:
+      tags: [Admin]
+      summary: Approve profile
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveProfileRequest'
+      responses:
+        '200':
+          description: Profile approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileApprovalResponse'
+
+  /admin/profiles/{profileId}/reject:
+    post:
+      tags: [Admin]
+      summary: Reject profile
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectProfileRequest'
+      responses:
+        '200':
+          description: Profile rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileApprovalResponse'
+
+  /admin/profiles/{profileId}/verification-tier:
+    patch:
+      tags: [Admin]
+      summary: Assign verification tier to profile
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignVerificationTierRequest'
+      responses:
+        '200':
+          description: Verification tier updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileApprovalResponse'
+
+  /admin/profiles/{profileId}/visibility:
+    patch:
+      tags: [Admin]
+      summary: Change profile visibility
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeVisibilityRequest'
+      responses:
+        '200':
+          description: Visibility updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileApprovalResponse'
+
+  /admin/users/{userId}/status:
+    patch:
+      tags: [Admin]
+      summary: Update user account status
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: User status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /admin/reports:
+    get:
+      tags: [Admin]
+      summary: Get moderation reports
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, reviewed, resolved]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportListResponse'
+
+  /admin/reports/{id}:
+    patch:
+      tags: [Admin]
+      summary: Resolve or dismiss a report
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveReportRequest'
+      responses:
+        '200':
+          description: Report resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/verification-documents:
+    get:
+      tags: [Admin]
+      summary: List verification documents pending admin review
+      parameters:
+        - name: profileId
+          in: query
+          schema:
+            type: string
+        - name: reviewStatus
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated verification documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationDocumentListResponse'
+
+  /admin/verification-documents/{id}:
+    get:
+      tags: [Admin]
+      summary: Get a single verification document
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Verification document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationDocumentResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/verification-documents/{id}/review:
+    patch:
+      tags: [Admin]
+      summary: Approve or reject a verification document
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewVerificationDocumentRequest'
+      responses:
+        '200':
+          description: Verification document reviewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationDocumentResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/media/{mediaId}/hide:
+    patch:
+      tags: [Admin]
+      summary: Hide media content
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Media hidden successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      summary: Get audit logs
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+
+  /admin/metadata/weight-classes:
+    post:
+      tags: [Admin]
+      summary: Create weight class
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSimpleNameRequest'
+      responses:
+        '201':
+          description: Weight class created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+  /admin/metadata/weight-classes/{id}:
+    patch:
+      tags: [Admin]
+      summary: Update weight class
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSimpleNameRequest'
+      responses:
+        '200':
+          description: Weight class updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+    delete:
+      tags: [Admin]
+      summary: Delete weight class
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Weight class deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdPathParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    KeywordParam:
+      name: keyword
+      in: query
+      schema:
+        type: string
+    RegionParam:
+      name: region
+      in: query
+      schema:
+        type: string
+    CityParam:
+      name: city
+      in: query
+      schema:
+        type: string
+    VerificationTierParam:
+      name: verificationTier
+      in: query
+      schema:
+        $ref: '#/components/schemas/VerificationTier'
+    WeightClassParam:
+      name: weightClass
+      in: query
+      schema:
+        type: string
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum: [verified_first, newest, oldest, name_asc, name_desc]
+
+  responses:
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    SuccessFlag:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Validation failed
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    GenericMessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 120
+        totalPages:
+          type: integer
+          example: 6
+
+    RoleType:
+      type: string
+      enum:
+        - super_admin
+        - admin
+        - fighter
+        - gym
+        - coach
+        - referee_judge
+        - promoter
+        - matchmaker
+        - fan
+
+    AccountStatus:
+      type: string
+      enum: [inactive, active, suspended, disabled, deleted]
+
+    ProfileStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected]
+
+    Visibility:
+      type: string
+      enum: [private, public]
+
+    VerificationTier:
+      type: string
+      enum: [unverified, tier_2_verified, tier_1_managed_verified]
+
+    SocialLinks:
+      type: object
+      properties:
+        instagram:
+          type: string
+          format: uri
+        tiktok:
+          type: string
+          format: uri
+        youtube:
+          type: string
+          format: uri
+        facebook:
+          type: string
+          format: uri
+        x:
+          type: string
+          format: uri
+        website:
+          type: string
+          format: uri
+
+    Location:
+      type: object
+      properties:
+        country:
+          type: string
+          example: Ghana
+        region:
+          type: string
+          example: Greater Accra
+        city:
+          type: string
+          example: Accra
+
+    ContactDetails:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        showEmailPublicly:
+          type: boolean
+          default: false
+        showPhonePublicly:
+          type: boolean
+          default: false
+
+    MediaItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [image, video, external_link]
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+
+    BaseProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        role:
+          $ref: '#/components/schemas/RoleType'
+        status:
+          $ref: '#/components/schemas/ProfileStatus'
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        verificationTier:
+          $ref: '#/components/schemas/VerificationTier'
+        profileImage:
+          type: string
+          format: uri
+        coverImage:
+          type: string
+          format: uri
+        bio:
+          type: string
+        location:
+          $ref: '#/components/schemas/Location'
+        contactDetails:
+          $ref: '#/components/schemas/ContactDetails'
+        socialLinks:
+          $ref: '#/components/schemas/SocialLinks'
+        mediaGallery:
+          type: array
+          items:
+            $ref: '#/components/schemas/MediaItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      required: [fullName, email, password, role]
+      properties:
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        role:
+          $ref: '#/components/schemas/RoleType'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          format: password
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+
+    AuthRegisterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Account created successfully
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+            email:
+              type: string
+              format: email
+            role:
+              $ref: '#/components/schemas/RoleType'
+            accountStatus:
+              $ref: '#/components/schemas/AccountStatus'
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+            refreshToken:
+              type: string
+            user:
+              $ref: '#/components/schemas/UserSummary'
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleType'
+        accountStatus:
+          $ref: '#/components/schemas/AccountStatus'
+
+    CurrentUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/UserSummary'
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        profilePhoto:
+          type: string
+          format: uri
+        socialLinks:
+          $ref: '#/components/schemas/SocialLinks'
+
+    FighterRecord:
+      type: object
+      properties:
+        wins:
+          type: integer
+          minimum: 0
+        losses:
+          type: integer
+          minimum: 0
+        draws:
+          type: integer
+          minimum: 0
+        kos:
+          type: integer
+          minimum: 0
+
+    FighterProfile:
+      allOf:
+        - $ref: '#/components/schemas/BaseProfile'
+        - type: object
+          properties:
+            fullName:
+              type: string
+            ringName:
+              type: string
+            nationality:
+              type: string
+            weightClass:
+              type: string
+            stance:
+              type: string
+              enum: [orthodox, southpaw, switch, unknown]
+            heightCm:
+              type: integer
+            reachCm:
+              type: integer
+            record:
+              $ref: '#/components/schemas/FighterRecord'
+            titles:
+              type: array
+              items:
+                type: string
+            linkedGymId:
+              type: string
+            linkedCoachId:
+              type: string
+
+    CreateFighterProfileRequest:
+      type: object
+      required: [fullName, weightClass]
+      properties:
+        fullName:
+          type: string
+        ringName:
+          type: string
+        nationality:
+          type: string
+        region:
+          type: string
+        city:
+          type: string
+        weightClass:
+          type: string
+        stance:
+          type: string
+          enum: [orthodox, southpaw, switch, unknown]
+        heightCm:
+          type: integer
+        reachCm:
+          type: integer
+        record:
+          $ref: '#/components/schemas/FighterRecord'
+        titles:
+          type: array
+          items:
+            type: string
+        linkedGymId:
+          type: string
+        linkedCoachId:
+          type: string
+        bio:
+          type: string
+
+    UpdateFighterProfileRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateFighterProfileRequest'
+
+    FighterProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/FighterProfile'
+
+    FighterProfileListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/FighterProfile'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    CreateFightHistoryRequest:
+      type: object
+      required: [opponentName, eventName, eventDate, result]
+      properties:
+        opponentName:
+          type: string
+        eventName:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        result:
+          type: string
+          enum: [win, loss, draw, no_contest]
+        method:
+          type: string
+        round:
+          type: integer
+
+    FightHistoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        opponentName:
+          type: string
+        eventName:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        result:
+          type: string
+        method:
+          type: string
+        round:
+          type: integer
+
+    FightHistoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/FightHistoryEntry'
+
+    GymProfile:
+      allOf:
+        - $ref: '#/components/schemas/BaseProfile'
+        - type: object
+          properties:
+            name:
+              type: string
+            address:
+              type: string
+            services:
+              type: array
+              items:
+                type: string
+            facilities:
+              type: array
+              items:
+                type: string
+            linkedCoachIds:
+              type: array
+              items:
+                type: string
+            rosterFighterIds:
+              type: array
+              items:
+                type: string
+
+    CreateGymProfileRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        location:
+          $ref: '#/components/schemas/Location'
+        contacts:
+          $ref: '#/components/schemas/ContactDetails'
+        services:
+          type: array
+          items:
+            type: string
+        facilities:
+          type: array
+          items:
+            type: string
+
+    UpdateGymProfileRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateGymProfileRequest'
+
+    GymProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/GymProfile'
+
+    GymProfileListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/GymProfile'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    CoachProfile:
+      allOf:
+        - $ref: '#/components/schemas/BaseProfile'
+        - type: object
+          properties:
+            fullName:
+              type: string
+            experienceSummary:
+              type: string
+            specialties:
+              type: array
+              items:
+                type: string
+            linkedGymIds:
+              type: array
+              items:
+                type: string
+            associatedFighterIds:
+              type: array
+              items:
+                type: string
+
+    CreateCoachProfileRequest:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:
+          type: string
+        bio:
+          type: string
+        experienceSummary:
+          type: string
+        specialties:
+          type: array
+          items:
+            type: string
+        linkedGymIds:
+          type: array
+          items:
+            type: string
+
+    UpdateCoachProfileRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateCoachProfileRequest'
+
+    CoachProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/CoachProfile'
+
+    CoachProfileListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CoachProfile'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    OfficialProfile:
+      allOf:
+        - $ref: '#/components/schemas/BaseProfile'
+        - type: object
+          properties:
+            fullName:
+              type: string
+            officialType:
+              type: array
+              items:
+                type: string
+                enum: [referee, judge]
+            experienceYears:
+              type: integer
+            eventsWorked:
+              type: array
+              items:
+                type: string
+            licensingDetails:
+              type: string
+            coverageArea:
+              type: array
+              items:
+                type: string
+            availability:
+              type: string
+
+    CreateOfficialProfileRequest:
+      type: object
+      required: [fullName, officialType]
+      properties:
+        officialType:
+          type: array
+          items:
+            type: string
+            enum: [referee, judge]
+        fullName:
+          type: string
+        experienceYears:
+          type: integer
+        eventsWorked:
+          type: array
+          items:
+            type: string
+        licensingDetails:
+          type: string
+        coverageArea:
+          type: array
+          items:
+            type: string
+        availability:
+          type: string
+
+    UpdateOfficialProfileRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateOfficialProfileRequest'
+
+    OfficialProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/OfficialProfile'
+
+    OfficialProfileListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OfficialProfile'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    PromoterProfile:
+      allOf:
+        - $ref: '#/components/schemas/BaseProfile'
+        - type: object
+          properties:
+            organizationName:
+              type: string
+            coverageAreas:
+              type: array
+              items:
+                type: string
+            pastEvents:
+              type: array
+              items:
+                type: string
+            references:
+              type: array
+              items:
+                type: string
+
+    CreatePromoterProfileRequest:
+      type: object
+      required: [organizationName]
+      properties:
+        organizationName:
+          type: string
+        contacts:
+          $ref: '#/components/schemas/ContactDetails'
+        coverageAreas:
+          type: array
+          items:
+            type: string
+        pastEvents:
+          type: array
+          items:
+            type: string
+        references:
+          type: array
+          items:
+            type: string
+
+    UpdatePromoterProfileRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreatePromoterProfileRequest'
+
+    PromoterProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/PromoterProfile'
+
+    PromoterProfileListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/PromoterProfile'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    MatchmakerProfile:
+      allOf:
+        - $ref: '#/components/schemas/BaseProfile'
+        - type: object
+          properties:
+            fullName:
+              type: string
+            regionsServed:
+              type: array
+              items:
+                type: string
+            weightClassesFocus:
+              type: array
+              items:
+                type: string
+            experienceSummary:
+              type: string
+            pastMatchups:
+              type: array
+              items:
+                type: string
+
+    CreateMatchmakerProfileRequest:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:
+          type: string
+        regionsServed:
+          type: array
+          items:
+            type: string
+        weightClassesFocus:
+          type: array
+          items:
+            type: string
+        experienceSummary:
+          type: string
+        pastMatchups:
+          type: array
+          items:
+            type: string
+
+    UpdateMatchmakerProfileRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateMatchmakerProfileRequest'
+
+    MatchmakerProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/MatchmakerProfile'
+
+    MatchmakerProfileListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchmakerProfile'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    DirectoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          $ref: '#/components/schemas/RoleType'
+        displayName:
+          type: string
+        ringName:
+          type: string
+        location:
+          type: string
+        verificationTier:
+          $ref: '#/components/schemas/VerificationTier'
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        profileImage:
+          type: string
+          format: uri
+
+    DirectorySearchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/DirectoryItem'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    CreateContactRequestRequest:
+      type: object
+      required: [recipientProfileId, message]
+      properties:
+        recipientProfileId:
+          type: string
+        message:
+          type: string
+
+    ContactRequestStatus:
+      type: string
+      enum: [pending, accepted, declined]
+
+    UpdateContactRequestRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/ContactRequestStatus'
+
+    ContactRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        senderUserId:
+          type: string
+        recipientProfileId:
+          type: string
+        message:
+          type: string
+        status:
+          $ref: '#/components/schemas/ContactRequestStatus'
+        createdAt:
+          type: string
+          format: date-time
+
+    ContactRequestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/ContactRequest'
+
+    ContactRequestListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ContactRequest'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    AddFavoriteRequest:
+      type: object
+      required: [profileId]
+      properties:
+        profileId:
+          type: string
+
+    Favorite:
+      type: object
+      properties:
+        id:
+          type: string
+        profileId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    FavoriteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Favorite'
+
+    FavoriteListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Favorite'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    CreateReportRequest:
+      type: object
+      required: [profileId, reason]
+      properties:
+        profileId:
+          type: string
+        reason:
+          type: string
+        details:
+          type: string
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+        reporterUserId:
+          type: string
+        profileId:
+          type: string
+        reason:
+          type: string
+        details:
+          type: string
+        status:
+          type: string
+          enum: [open, reviewed, resolved]
+        resolution:
+          type: string
+          enum: [dismissed, content_hidden, user_suspended]
+        resolvedByUserId:
+          type: string
+        resolvedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Report'
+
+    ReportListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Report'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Notification'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    UploadMediaResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            fileUrl:
+              type: string
+              format: uri
+            fileType:
+              type: string
+              enum: [image, video]
+
+    UploadDocumentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            documentId:
+              type: string
+            fileUrl:
+              type: string
+              format: uri
+
+    UploadDocumentReferenceRequest:
+      type: object
+      required: [documentId, fileUrl]
+      properties:
+        documentId:
+          type: string
+        fileUrl:
+          type: string
+          format: uri
+        title:
+          type: string
+
+    DocumentReferenceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            documentId:
+              type: string
+            fileUrl:
+              type: string
+              format: uri
+            title:
+              type: string
+
+    WeightClassListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: string
+
+    RegionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: string
+
+    VerificationTierListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerificationTier'
+
+    ApproveProfileRequest:
+      type: object
+      properties:
+        verificationTier:
+          $ref: '#/components/schemas/VerificationTier'
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        note:
+          type: string
+
+    RejectProfileRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    AssignVerificationTierRequest:
+      type: object
+      required: [verificationTier]
+      properties:
+        verificationTier:
+          $ref: '#/components/schemas/VerificationTier'
+
+    ChangeVisibilityRequest:
+      type: object
+      required: [visibility]
+      properties:
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+
+    UpdateUserStatusRequest:
+      type: object
+      required: [accountStatus]
+      properties:
+        accountStatus:
+          $ref: '#/components/schemas/AccountStatus'
+        reason:
+          type: string
+
+    ApprovalQueueItem:
+      type: object
+      properties:
+        profileId:
+          type: string
+        userId:
+          type: string
+        role:
+          $ref: '#/components/schemas/RoleType'
+        status:
+          $ref: '#/components/schemas/ProfileStatus'
+        submittedAt:
+          type: string
+          format: date-time
+        verificationTier:
+          $ref: '#/components/schemas/VerificationTier'
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+
+    ApprovalQueueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ApprovalQueueItem'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    ProfileApprovalResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            profileId:
+              type: string
+            status:
+              $ref: '#/components/schemas/ProfileStatus'
+            verificationTier:
+              $ref: '#/components/schemas/VerificationTier'
+            visibility:
+              $ref: '#/components/schemas/Visibility'
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        actorUserId:
+          type: string
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditLog'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    CreateSimpleNameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    FanProfile:
+      allOf:
+        - $ref: '#/components/schemas/BaseProfile'
+        - type: object
+          properties:
+            displayName:
+              type: string
+            favouriteWeightClass:
+              type: string
+
+    CreateFanProfileRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+        bio:
+          type: string
+        location:
+          $ref: '#/components/schemas/Location'
+        socialLinks:
+          $ref: '#/components/schemas/SocialLinks'
+        favouriteWeightClass:
+          type: string
+
+    UpdateFanProfileRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateFanProfileRequest'
+
+    FanProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/FanProfile'
+
+    FanProfileListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/FanProfile'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    ResolveReportRequest:
+      type: object
+      required: [resolution]
+      properties:
+        resolution:
+          type: string
+          enum: [dismissed, content_hidden, user_suspended]
+          description: >
+            dismissed — report closed with no action taken.
+            content_hidden — the reported content has been hidden via /admin/media/{id}/hide.
+            user_suspended — the reported user has been suspended via /admin/users/{id}/status.
+        notes:
+          type: string
+          description: Optional admin note explaining the decision.
+
+    VerificationDocumentStatus:
+      type: string
+      enum: [pending, approved, rejected]
+
+    VerificationDocument:
+      type: object
+      properties:
+        id:
+          type: string
+        profileId:
+          type: string
+        documentType:
+          type: string
+        fileUrl:
+          type: string
+          format: uri
+          description: Private URL — must never be exposed in public-facing responses.
+        reviewStatus:
+          $ref: '#/components/schemas/VerificationDocumentStatus'
+        reviewedByUserId:
+          type: string
+        reviewedAt:
+          type: string
+          format: date-time
+        reviewNotes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    VerificationDocumentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/VerificationDocument'
+
+    VerificationDocumentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/VerificationDocument'
+            pagination:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    ReviewVerificationDocumentRequest:
+      type: object
+      required: [reviewStatus]
+      properties:
+        reviewStatus:
+          $ref: '#/components/schemas/VerificationDocumentStatus'
+        reviewNotes:
+          type: string
+          description: Required when reviewStatus is rejected.

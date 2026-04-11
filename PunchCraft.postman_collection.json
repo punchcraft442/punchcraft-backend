@@ -1,0 +1,999 @@
+{
+  "info": {
+    "name": "PunchCraft API",
+    "description": "REST API for PunchCraft — a boxing ecosystem platform for profiling, verifying, and connecting fighters, gyms, coaches, referees/judges, promoters, matchmakers, and fans.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "profileId", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Kwame Mensah\",\n  \"email\": \"kwame@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"role\": \"fighter\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.accessToken) {",
+                  "  pm.collectionVariables.set('token', res.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"kwame@example.com\",\n  \"password\": \"StrongPass123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email?token=<activation_token>",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"],
+              "query": [{ "key": "token", "value": "<activation_token>" }]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"<your_refresh_token>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["auth", "forgot-password"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"kwame@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["auth", "reset-password"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<reset_token>\",\n  \"newPassword\": \"NewStrongPass123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"StrongPass123!\",\n  \"newPassword\": \"NewStrongPass123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] }
+          }
+        },
+        {
+          "name": "Update Current User",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+233500000000\",\n  \"profilePhoto\": \"https://cdn.punchcraft.com/photos/user.jpg\",\n  \"socialLinks\": {\n    \"instagram\": \"https://instagram.com/kwameboxing\",\n    \"youtube\": \"https://youtube.com/@kwameboxing\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fighters",
+      "item": [
+        {
+          "name": "Create Fighter Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fighters", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Kwame Mensah\",\n  \"ringName\": \"The Accra Lion\",\n  \"nationality\": \"Ghanaian\",\n  \"weightClass\": \"lightweight\",\n  \"stance\": \"orthodox\",\n  \"heightCm\": 175,\n  \"reachCm\": 178,\n  \"record\": { \"wins\": 10, \"losses\": 2, \"draws\": 0, \"kos\": 7 },\n  \"bio\": \"Professional boxer from Accra.\",\n  \"region\": \"Greater Accra\",\n  \"city\": \"Accra\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Fighter Profiles",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/fighters?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "fighters"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "keyword", "value": "", "disabled": true },
+                { "key": "region", "value": "", "disabled": true },
+                { "key": "city", "value": "", "disabled": true },
+                { "key": "verificationTier", "value": "", "disabled": true },
+                { "key": "weightClass", "value": "", "disabled": true },
+                { "key": "sort", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Fighter Profile",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}"] }
+          }
+        },
+        {
+          "name": "Update Fighter Profile",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Updated bio.\",\n  \"weightClass\": \"welterweight\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Fighter Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Add Fight History",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}/fight-history", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}", "fight-history"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"opponentName\": \"Kofi Asare\",\n  \"eventName\": \"Accra Fight Night\",\n  \"eventDate\": \"2026-03-15\",\n  \"result\": \"win\",\n  \"method\": \"KO\",\n  \"round\": 4\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gyms",
+      "item": [
+        {
+          "name": "Create Gym Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Accra Boxing Club\",\n  \"address\": \"12 Ring Road, Accra\",\n  \"location\": { \"country\": \"Ghana\", \"region\": \"Greater Accra\", \"city\": \"Accra\" },\n  \"services\": [\"boxing\", \"fitness\"],\n  \"facilities\": [\"ring\", \"gym\", \"locker rooms\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "List Gym Profiles",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/gyms?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "gyms"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "keyword", "value": "", "disabled": true },
+                { "key": "region", "value": "", "disabled": true },
+                { "key": "city", "value": "", "disabled": true },
+                { "key": "verificationTier", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Gym Profile",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}"] }
+          }
+        },
+        {
+          "name": "Update Gym Profile",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Accra Elite Boxing Club\",\n  \"services\": [\"boxing\", \"fitness\", \"sparring\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Gym Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Link Coach to Gym",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}/coaches/:coachId", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}", "coaches", ":coachId"], "variable": [{ "key": "coachId", "value": "<coach_profile_id>" }] }
+          }
+        },
+        {
+          "name": "Add Fighter to Gym Roster",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}/fighters/:fighterId", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}", "fighters", ":fighterId"], "variable": [{ "key": "fighterId", "value": "<fighter_profile_id>" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Coaches",
+      "item": [
+        {
+          "name": "Create Coach Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/coaches", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Emmanuel Tetteh\",\n  \"bio\": \"20 years coaching experience.\",\n  \"specialties\": [\"footwork\", \"combinations\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "List Coach Profiles",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/coaches?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "coaches"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "keyword", "value": "", "disabled": true },
+                { "key": "region", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Coach Profile",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}"] }
+          }
+        },
+        {
+          "name": "Update Coach Profile",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Updated coaching bio.\",\n  \"specialties\": [\"defense\", \"clinch work\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Coach Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Upload Coach Certification",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}/certifications", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}", "certifications"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": \"<document_id_from_upload>\",\n  \"fileUrl\": \"https://res.cloudinary.com/example/cert.pdf\",\n  \"title\": \"AIBA Level 2 Coaching Certificate\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Officials",
+      "item": [
+        {
+          "name": "Create Official Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/officials", "host": ["{{baseUrl}}"], "path": ["profiles", "officials"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"James Owusu\",\n  \"officialType\": [\"referee\"],\n  \"experienceYears\": 12,\n  \"coverageArea\": [\"Ghana\", \"Nigeria\"],\n  \"availability\": \"weekends\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Official Profiles",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/officials?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "officials"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Official Profile",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}"] }
+          }
+        },
+        {
+          "name": "Update Official Profile",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"experienceYears\": 14,\n  \"availability\": \"full-time\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Official Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Upload Official Credentials",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}/credentials", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}", "credentials"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": \"<document_id_from_upload>\",\n  \"fileUrl\": \"https://res.cloudinary.com/example/license.pdf\",\n  \"title\": \"WBC Referee License\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Promoters",
+      "item": [
+        {
+          "name": "Create Promoter Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/promoters", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationName\": \"Ghana Fight Promotions\",\n  \"coverageAreas\": [\"West Africa\"],\n  \"pastEvents\": [\"Accra Fight Night 2025\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "List Promoter Profiles",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/promoters?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Get Promoter Profile",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}"] }
+          }
+        },
+        {
+          "name": "Update Promoter Profile",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"coverageAreas\": [\"West Africa\", \"East Africa\"]\n}" }
+          }
+        },
+        {
+          "name": "Submit Promoter Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}", "submit"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Matchmakers",
+      "item": [
+        {
+          "name": "Create Matchmaker Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Aba Sarpong\",\n  \"regionsServed\": [\"West Africa\"],\n  \"weightClassesFocus\": [\"lightweight\", \"welterweight\"],\n  \"experienceSummary\": \"10 years in professional boxing matchmaking.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Matchmaker Profiles",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Get Matchmaker Profile",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}"] }
+          }
+        },
+        {
+          "name": "Update Matchmaker Profile",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"experienceSummary\": \"12 years in professional boxing matchmaking.\"\n}" }
+          }
+        },
+        {
+          "name": "Submit Matchmaker Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}", "submit"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fans",
+      "item": [
+        {
+          "name": "Create Fan Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fans", "host": ["{{baseUrl}}"], "path": ["profiles", "fans"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"BoxingFanGH\",\n  \"bio\": \"Die-hard boxing fan from Kumasi.\",\n  \"favouriteWeightClass\": \"heavyweight\",\n  \"location\": { \"country\": \"Ghana\", \"region\": \"Ashanti\", \"city\": \"Kumasi\" }\n}"
+            }
+          }
+        },
+        {
+          "name": "List Fan Profiles",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/fans?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["profiles", "fans"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Get Fan Profile",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}"] }
+          }
+        },
+        {
+          "name": "Update Fan Profile",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"bio\": \"Updated fan bio.\"\n}" }
+          }
+        },
+        {
+          "name": "Submit Fan Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}", "submit"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Directories",
+      "item": [
+        {
+          "name": "Search Public Directory",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "{{baseUrl}}/directories?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["directories"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "role", "value": "fighter", "disabled": true },
+                { "key": "keyword", "value": "", "disabled": true },
+                { "key": "region", "value": "", "disabled": true },
+                { "key": "city", "value": "", "disabled": true },
+                { "key": "verificationTier", "value": "", "disabled": true },
+                { "key": "weightClass", "value": "", "disabled": true },
+                { "key": "sort", "value": "verified_first", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contact Requests",
+      "item": [
+        {
+          "name": "Send Contact Request",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/contact-requests", "host": ["{{baseUrl}}"], "path": ["contact-requests"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientProfileId\": \"<profile_id>\",\n  \"message\": \"Hi, I'd like to connect with you.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Contact Requests",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/contact-requests?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["contact-requests"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Update Contact Request Status",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/contact-requests/:id", "host": ["{{baseUrl}}"], "path": ["contact-requests", ":id"], "variable": [{ "key": "id", "value": "<contact_request_id>" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"accepted\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Favorites",
+      "item": [
+        {
+          "name": "Add to Favorites",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/favorites", "host": ["{{baseUrl}}"], "path": ["favorites"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"profileId\": \"<profile_id>\"\n}" }
+          }
+        },
+        {
+          "name": "Get Favorites",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/favorites?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["favorites"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Remove from Favorites",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/favorites/:profileId", "host": ["{{baseUrl}}"], "path": ["favorites", ":profileId"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Submit Report",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/reports", "host": ["{{baseUrl}}"], "path": ["reports"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"<profile_id>\",\n  \"reason\": \"fake_profile\",\n  \"details\": \"This profile appears to be impersonating a real fighter.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/notifications?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["notifications"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/notifications/:id/read", "host": ["{{baseUrl}}"], "path": ["notifications", ":id", "read"], "variable": [{ "key": "id", "value": "<notification_id>" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "item": [
+        {
+          "name": "Upload Media File",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/uploads/media", "host": ["{{baseUrl}}"], "path": ["uploads", "media"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            }
+          }
+        },
+        {
+          "name": "Upload Verification Document",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/uploads/documents/verification", "host": ["{{baseUrl}}"], "path": ["uploads", "documents", "verification"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Metadata",
+      "item": [
+        {
+          "name": "Get Weight Classes",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/metadata/weight-classes", "host": ["{{baseUrl}}"], "path": ["metadata", "weight-classes"] }
+          }
+        },
+        {
+          "name": "Get Regions",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/metadata/regions", "host": ["{{baseUrl}}"], "path": ["metadata", "regions"] }
+          }
+        },
+        {
+          "name": "Get Verification Tiers",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/metadata/verification-tiers", "host": ["{{baseUrl}}"], "path": ["metadata", "verification-tiers"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Approval Queue",
+          "item": [
+            {
+              "name": "Get Approval Queue",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/approval-queue?page=1&limit=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "approval-queue"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "limit", "value": "20" },
+                    { "key": "role", "value": "", "disabled": true },
+                    { "key": "status", "value": "submitted", "disabled": true }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Approve Profile",
+              "request": {
+                "method": "POST",
+                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/approve", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "approve"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"verificationTier\": \"unverified\",\n  \"visibility\": \"public\",\n  \"note\": \"Profile meets all requirements.\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Reject Profile",
+              "request": {
+                "method": "POST",
+                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/reject", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "reject"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Profile information is incomplete or unverifiable.\"\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Profile Management",
+          "item": [
+            {
+              "name": "Assign Verification Tier",
+              "request": {
+                "method": "PATCH",
+                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/verification-tier", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "verification-tier"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"verificationTier\": \"tier_2_verified\"\n}" }
+              }
+            },
+            {
+              "name": "Change Profile Visibility",
+              "request": {
+                "method": "PATCH",
+                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/visibility", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "visibility"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"visibility\": \"public\"\n}" }
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Management",
+          "item": [
+            {
+              "name": "Update User Status",
+              "request": {
+                "method": "PATCH",
+                "url": { "raw": "{{baseUrl}}/admin/users/:userId/status", "host": ["{{baseUrl}}"], "path": ["admin", "users", ":userId", "status"], "variable": [{ "key": "userId", "value": "<user_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"accountStatus\": \"suspended\",\n  \"reason\": \"Violation of community guidelines.\"\n}" }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Moderation",
+          "item": [
+            {
+              "name": "Get Reports",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/reports?page=1&limit=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "reports"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "limit", "value": "20" },
+                    { "key": "status", "value": "open", "disabled": true }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Resolve Report",
+              "request": {
+                "method": "PATCH",
+                "url": { "raw": "{{baseUrl}}/admin/reports/:id", "host": ["{{baseUrl}}"], "path": ["admin", "reports", ":id"], "variable": [{ "key": "id", "value": "<report_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"resolution\": \"dismissed\",\n  \"notes\": \"No evidence of policy violation found.\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Hide Media",
+              "request": {
+                "method": "PATCH",
+                "url": { "raw": "{{baseUrl}}/admin/media/:mediaId/hide", "host": ["{{baseUrl}}"], "path": ["admin", "media", ":mediaId", "hide"], "variable": [{ "key": "mediaId", "value": "<media_id>" }] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verification Documents",
+          "item": [
+            {
+              "name": "List Verification Documents",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/verification-documents?page=1&limit=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "verification-documents"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "limit", "value": "20" },
+                    { "key": "profileId", "value": "", "disabled": true },
+                    { "key": "reviewStatus", "value": "pending", "disabled": true }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Verification Document",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/admin/verification-documents/:id", "host": ["{{baseUrl}}"], "path": ["admin", "verification-documents", ":id"], "variable": [{ "key": "id", "value": "<document_id>" }] }
+              }
+            },
+            {
+              "name": "Review Verification Document",
+              "request": {
+                "method": "PATCH",
+                "url": { "raw": "{{baseUrl}}/admin/verification-documents/:id/review", "host": ["{{baseUrl}}"], "path": ["admin", "verification-documents", ":id", "review"], "variable": [{ "key": "id", "value": "<document_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reviewStatus\": \"approved\",\n  \"reviewNotes\": \"Document verified and accepted.\"\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit & Metadata",
+          "item": [
+            {
+              "name": "Get Audit Logs",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/admin/audit-logs?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["admin", "audit-logs"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+              }
+            },
+            {
+              "name": "Create Weight Class",
+              "request": {
+                "method": "POST",
+                "url": { "raw": "{{baseUrl}}/admin/metadata/weight-classes", "host": ["{{baseUrl}}"], "path": ["admin", "metadata", "weight-classes"] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"cruiserweight\"\n}" }
+              }
+            },
+            {
+              "name": "Update Weight Class",
+              "request": {
+                "method": "PATCH",
+                "url": { "raw": "{{baseUrl}}/admin/metadata/weight-classes/:id", "host": ["{{baseUrl}}"], "path": ["admin", "metadata", "weight-classes", ":id"], "variable": [{ "key": "id", "value": "<weight_class_id>" }] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"super-cruiserweight\"\n}" }
+              }
+            },
+            {
+              "name": "Delete Weight Class",
+              "request": {
+                "method": "DELETE",
+                "url": { "raw": "{{baseUrl}}/admin/metadata/weight-classes/:id", "host": ["{{baseUrl}}"], "path": ["admin", "metadata", "weight-classes", ":id"], "variable": [{ "key": "id", "value": "<weight_class_id>" }] }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
