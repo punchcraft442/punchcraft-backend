@@ -19,6 +19,10 @@ fn bson_err(e: mongodb::bson::ser::Error) -> AppError {
 
 // ── profiles collection ───────────────────────────────────────────────────────
 
+pub fn col_profiles(db: &Database) -> mongodb::Collection<Profile> {
+    db.collection("profiles")
+}
+
 pub async fn insert_profile(db: &Database, p: &Profile) -> Result<ObjectId, AppError> {
     let r = col::<Profile>(db, "profiles").insert_one(p).await?;
     Ok(r.inserted_id.as_object_id().unwrap())

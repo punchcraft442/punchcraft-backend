@@ -1556,3 +1556,128 @@ async fn fighter_create_with_invalid_linked_coach_returns_404() {
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     teardown_db(&db).await;
 }
+
+// =============================================================================
+// REQUEST REVISION
+// =============================================================================
+
+#[tokio::test]
+async fn request_revision_on_approved_profile_returns_draft() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let (_, body) = create_fighter(&app, FIGHTER_A).await;
+    let id = body["data"]["id"].as_str().unwrap().to_string();
+
+    submit_fighter(&app, FIGHTER_A, &id).await;
+    admin_approve(&app, &id).await;
+
+    let jwt = make_jwt(FIGHTER_A, "fighter");
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/fighters/{}/request-revision", id))
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    let status = resp.status();
+    let body: Value = test::read_body_json(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["data"]["status"], "draft");
+    assert_eq!(body["data"]["visibility"], "private");
+    assert_eq!(body["data"]["searchable"], false);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn request_revision_on_draft_returns_400() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let (_, body) = create_fighter(&app, FIGHTER_A).await;
+    let id = body["data"]["id"].as_str().unwrap();
+
+    let jwt = make_jwt(FIGHTER_A, "fighter");
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/fighters/{}/request-revision", id))
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn request_revision_requires_ownership() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let (_, body) = create_fighter(&app, FIGHTER_A).await;
+    let id = body["data"]["id"].as_str().unwrap().to_string();
+
+    submit_fighter(&app, FIGHTER_A, &id).await;
+    admin_approve(&app, &id).await;
+
+    let jwt = make_jwt(FIGHTER_B, "fighter");
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/fighters/{}/request-revision", id))
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn request_revision_requires_auth() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/profiles/fighters/000000000000000000000001/request-revision")
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn request_revision_then_edit_then_resubmit() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let (_, body) = create_fighter(&app, FIGHTER_A).await;
+    let id = body["data"]["id"].as_str().unwrap().to_string();
+
+    submit_fighter(&app, FIGHTER_A, &id).await;
+    admin_approve(&app, &id).await;
+
+    let jwt = make_jwt(FIGHTER_A, "fighter");
+
+    // Request revision — back to draft
+    test::call_service(&app, test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/fighters/{}/request-revision", id))
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .to_request()).await;
+
+    // Edit should now succeed
+    let resp = test::call_service(&app, test::TestRequest::patch()
+        .uri(&format!("/api/v1/profiles/fighters/{}", id))
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .set_json(json!({ "bio": "Updated after revision" }))
+        .to_request()).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Resubmit should succeed
+    let status = submit_fighter(&app, FIGHTER_A, &id).await;
+    assert_eq!(status, StatusCode::OK);
+
+    teardown_db(&db).await;
+}

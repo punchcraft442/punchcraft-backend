@@ -93,3 +93,18 @@ pub fn require_admin(req: &actix_web::HttpRequest) -> Result<Claims, crate::comm
         Err(crate::common::errors::AppError::Forbidden)
     }
 }
+
+/// Require super_admin role only.
+pub fn require_super_admin(req: &actix_web::HttpRequest) -> Result<Claims, crate::common::errors::AppError> {
+    let claims = require_auth(req)?;
+    if claims.role == "super_admin" {
+        Ok(claims)
+    } else {
+        Err(crate::common::errors::AppError::Forbidden)
+    }
+}
+
+/// Returns true if the caller is a super_admin.
+pub fn is_super_admin(req: &actix_web::HttpRequest) -> bool {
+    extract_claims(req).map(|c| c.role == "super_admin").unwrap_or(false)
+}

@@ -1724,7 +1724,7 @@ components:
 
     VerificationTier:
       type: string
-      enum: [unverified, tier_2_verified, tier_1_managed_verified]
+      enum: [unverified, tier2_verified, tier1_managed_verified]
 
     SocialLinks:
       type: object

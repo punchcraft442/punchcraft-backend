@@ -47,14 +47,15 @@ fn new_profile(user_id: ObjectId, role: &str, display_name: &str, bio: Option<St
 }
 
 /// Enforce that the caller's JWT role matches the expected role.
+/// super_admin bypasses this check — they can create any profile type.
 pub fn enforce_role(claims_role: &str, expected: &str) -> Result<(), AppError> {
-    if claims_role != expected {
-        return Err(AppError::ForbiddenMsg(format!(
-            "Your account role '{}' cannot create a {} profile",
-            claims_role, expected
-        )));
+    if claims_role == "super_admin" || claims_role == expected {
+        return Ok(());
     }
-    Ok(())
+    Err(AppError::ForbiddenMsg(format!(
+        "Your account role '{}' cannot create a {} profile",
+        claims_role, expected
+    )))
 }
 
 /// Check that the profile exists, belongs to the caller, and is editable.
@@ -218,18 +219,27 @@ pub async fn update_fighter(
         return Err(AppError::NotFound);
     }
 
-    // Validate and prepare linked gym/coach changes
-    if let Some(gym_id) = &req.linked_gym_id {
-        let gid = parse_oid(gym_id)?;
+    // Fetch current fighter details once if gym or coach is changing (needed for roster sync)
+    let current_details = if req.linked_gym_id.is_some() || req.linked_coach_id.is_some() {
+        Some(repository::find_fighter(db, pid).await?.ok_or(AppError::NotFound)?)
+    } else {
+        None
+    };
+
+    let gym_sync = if let Some(new_gym_id) = &req.linked_gym_id {
+        let gid = parse_oid(new_gym_id)?;
         let g = repository::find_profile_by_id(db, gid).await?.ok_or(AppError::NotFound)?;
         if g.role != "gym" { return Err(AppError::BadRequest("linkedGymId does not refer to a gym profile".into())); }
-    }
+        let old_gym_id = current_details.as_ref().and_then(|d| d.linked_gym_id.clone());
+        Some((gid, new_gym_id.clone(), old_gym_id))
+    } else { None };
+
     let coach_sync = if let Some(new_coach_id) = &req.linked_coach_id {
         let ncid = parse_oid(new_coach_id)?;
         let c = repository::find_profile_by_id(db, ncid).await?.ok_or(AppError::NotFound)?;
         if c.role != "coach" { return Err(AppError::BadRequest("linkedCoachId does not refer to a coach profile".into())); }
-        let current = repository::find_fighter(db, pid).await?.ok_or(AppError::NotFound)?;
-        Some((ncid, current.linked_coach_id))
+        let old_coach_id = current_details.as_ref().and_then(|d| d.linked_coach_id.clone());
+        Some((ncid, old_coach_id))
     } else { None };
 
     let weight_class_ref = req.weight_class.as_deref();
@@ -256,8 +266,21 @@ pub async fn update_fighter(
         repository::update_fighter(db, pid, d_update).await?;
     }
 
-    // Sync coach associatedFighterIds after fighter details are saved
     let pid_str = pid.to_hex();
+
+    // Sync gym rosterFighterIds when fighter changes their gym
+    if let Some((new_gid, new_gym_id_str, old_gym_id)) = gym_sync {
+        if let Some(old_id) = old_gym_id {
+            if old_id != new_gym_id_str {
+                if let Ok(old_gid) = ObjectId::parse_str(&old_id) {
+                    repository::gym_remove_fighter(db, old_gid, &pid_str).await?;
+                }
+            }
+        }
+        repository::gym_add_fighter(db, new_gid, &pid_str).await?;
+    }
+
+    // Sync coach associatedFighterIds after fighter details are saved
     if let Some((new_cpid, old_coach_id_str)) = coach_sync {
         if let Some(old_id) = old_coach_id_str {
             if old_id != new_cpid.to_hex() {
@@ -512,8 +535,18 @@ pub async fn gym_link_fighter(
         return Err(AppError::BadRequest("Linked profile is not a fighter".into()));
     }
 
+    let fighter_details = repository::find_fighter(db, fighter_pid).await?.ok_or(AppError::NotFound)?;
+    if let Some(existing_gym) = &fighter_details.linked_gym_id {
+        if existing_gym != gym_profile_id {
+            return Err(AppError::Conflict(
+                "Fighter already belongs to another gym. The fighter must update their profile to change gyms.".into(),
+            ));
+        }
+        // Already linked to this gym — nothing to do
+        return Ok(());
+    }
+
     repository::gym_add_fighter(db, pid, fighter_profile_id).await?;
-    // Update fighter's linkedGymId to point to this gym
     repository::update_fighter(db, fighter_pid, doc! { "linkedGymId": gym_profile_id }).await
 }
 
@@ -1051,6 +1084,37 @@ pub async fn list_fans(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Revision request
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Owner requests a revision on an approved profile — reverts to draft/private/not-searchable.
+pub async fn request_revision(
+    db: &Database,
+    profile_id: &str,
+    user_id: &str,
+) -> Result<ProfileSummary, AppError> {
+    let pid = parse_oid(profile_id)?;
+    let uid = parse_oid(user_id)?;
+    let profile = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    if profile.user_id != uid {
+        return Err(AppError::Forbidden);
+    }
+    if profile.status != ProfileStatus::Approved {
+        return Err(AppError::BadRequest(
+            "Only approved profiles can request a revision".into(),
+        ));
+    }
+    repository::update_profile(db, pid, doc! {
+        "status": "draft",
+        "visibility": "private",
+        "searchable": false,
+        "updatedAt": now_str(),
+    }).await?;
+    let updated = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    Ok(ProfileSummary::from(updated))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Admin helpers (used by admin module)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1096,4 +1160,62 @@ pub async fn admin_get_profile(db: &Database, profile_id: &str) -> Result<Profil
     let pid = parse_oid(profile_id)?;
     let profile = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
     Ok(ProfileSummary::from(profile))
+}
+
+/// Upload a profile image to Cloudinary and update profileImageUrl on the profile.
+/// Caller must own the profile.
+pub async fn update_profile_image(
+    db: &Database,
+    profile_id: &str,
+    user_id: &str,
+    data: Vec<u8>,
+    filename: String,
+) -> Result<ProfileSummary, AppError> {
+    let pid = parse_oid(profile_id)?;
+    let uid = parse_oid(user_id)?;
+    let profile = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    if profile.user_id != uid {
+        return Err(AppError::Forbidden);
+    }
+
+    let client = crate::media::cloudinary::CloudinaryClient::from_env()?;
+    let folder = format!("punchcraft/profiles/{}/avatar", pid.to_hex());
+    let resp = client.upload(data, filename, &folder).await?;
+
+    repository::update_profile(db, pid, doc! {
+        "profileImageUrl": &resp.secure_url,
+        "updatedAt": now_str(),
+    }).await?;
+
+    let updated = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    Ok(ProfileSummary::from(updated))
+}
+
+/// Upload a cover image to Cloudinary and update coverImageUrl on the profile.
+/// Caller must own the profile.
+pub async fn update_cover_image(
+    db: &Database,
+    profile_id: &str,
+    user_id: &str,
+    data: Vec<u8>,
+    filename: String,
+) -> Result<ProfileSummary, AppError> {
+    let pid = parse_oid(profile_id)?;
+    let uid = parse_oid(user_id)?;
+    let profile = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    if profile.user_id != uid {
+        return Err(AppError::Forbidden);
+    }
+
+    let client = crate::media::cloudinary::CloudinaryClient::from_env()?;
+    let folder = format!("punchcraft/profiles/{}/cover", pid.to_hex());
+    let resp = client.upload(data, filename, &folder).await?;
+
+    repository::update_profile(db, pid, doc! {
+        "coverImageUrl": &resp.secure_url,
+        "updatedAt": now_str(),
+    }).await?;
+
+    let updated = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    Ok(ProfileSummary::from(updated))
 }

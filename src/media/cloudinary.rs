@@ -19,15 +19,15 @@ pub struct CloudinaryClient {
 }
 
 impl CloudinaryClient {
-    pub fn from_env() -> Self {
-        Self {
+    pub fn from_env() -> Result<Self, AppError> {
+        Ok(Self {
             cloud_name: std::env::var("CLOUDINARY_CLOUD_NAME")
-                .expect("CLOUDINARY_CLOUD_NAME must be set"),
+                .map_err(|_| AppError::Internal(anyhow::anyhow!("CLOUDINARY_CLOUD_NAME is not set")))?,
             api_key: std::env::var("CLOUDINARY_API_KEY")
-                .expect("CLOUDINARY_API_KEY must be set"),
+                .map_err(|_| AppError::Internal(anyhow::anyhow!("CLOUDINARY_API_KEY is not set")))?,
             api_secret: std::env::var("CLOUDINARY_API_SECRET")
-                .expect("CLOUDINARY_API_SECRET must be set"),
-        }
+                .map_err(|_| AppError::Internal(anyhow::anyhow!("CLOUDINARY_API_SECRET is not set")))?,
+        })
     }
 
     fn sign(&self, params_to_sign: &str) -> String {
@@ -51,6 +51,23 @@ impl CloudinaryClient {
         filename: String,
         folder: &str,
     ) -> Result<CloudinaryUploadResponse, AppError> {
+        if data.is_empty() {
+            return Err(AppError::BadRequest("Uploaded file is empty".into()));
+        }
+
+        // Sanitize filename: keep only ASCII alphanumerics, dots, dashes, underscores.
+        // Spaces and other characters break the multipart Content-Disposition header.
+        let ext = filename.rsplit('.').next().unwrap_or("jpg");
+        let safe_filename = format!(
+            "upload.{}",
+            ext.chars().filter(|c| c.is_ascii_alphanumeric()).collect::<String>()
+        );
+
+        tracing::debug!(
+            "Cloudinary upload: {} bytes, filename={:?} -> {:?}, folder={}",
+            data.len(), filename, safe_filename, folder
+        );
+
         let timestamp = Self::timestamp();
         let params_to_sign = format!("folder={}&timestamp={}", folder, timestamp);
         let signature = self.sign(&params_to_sign);
@@ -60,9 +77,9 @@ impl CloudinaryClient {
             self.cloud_name
         );
 
-        let part = multipart::Part::bytes(data)
-            .file_name(filename)
-            .mime_str("application/octet-stream")
+        let part = multipart::Part::stream(reqwest::Body::from(data))
+            .file_name(safe_filename)
+            .mime_str("image/jpeg")
             .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
         let form = multipart::Form::new()

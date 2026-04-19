@@ -11,7 +11,7 @@ pub async fn upload_media(
     filename: String,
     category: String,
 ) -> Result<MediaAsset, AppError> {
-    let client = CloudinaryClient::from_env();
+    let client = CloudinaryClient::from_env()?;
     let folder = format!("punchcraft/profiles/{}", profile_id.to_hex());
     let resp = client.upload(data, filename, &folder).await?;
 
@@ -46,7 +46,7 @@ pub async fn delete_media(
         }
     }
 
-    let client = CloudinaryClient::from_env();
+    let client = CloudinaryClient::from_env()?;
     client.delete(&asset.public_id).await?;
 
     repository::delete_by_id(db, id).await?;

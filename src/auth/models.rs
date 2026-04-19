@@ -24,6 +24,8 @@ pub struct User {
     pub refresh_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token_expires: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub is_suspended: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

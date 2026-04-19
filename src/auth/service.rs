@@ -57,6 +57,7 @@ pub async fn register(
         password_hash,
         role: req.role,
         is_active: false,
+        is_suspended: false,
         activation_token: Some(activation_token.clone()),
         activation_token_expires: Some(activation_expires),
         reset_token: None,
@@ -128,6 +129,10 @@ pub async fn login(db: &Database, req: LoginRequest) -> Result<LoginData, AppErr
         return Err(AppError::ForbiddenMsg(
             "Account not yet activated. Please check your email for the activation link.".into(),
         ));
+    }
+
+    if user.is_suspended {
+        return Err(AppError::ForbiddenMsg("Account has been suspended.".into()));
     }
 
     let user_id = user.id.unwrap().to_hex();
@@ -305,4 +310,10 @@ pub async fn find_user_email(db: &Database, user_id: &str) -> Option<String> {
         .ok()
         .flatten()
         .map(|u| u.email)
+}
+
+/// Fetch a user document by ObjectId string.
+pub async fn find_user_by_id(db: &Database, user_id: &str) -> Result<Option<User>, AppError> {
+    let oid = ObjectId::parse_str(user_id).map_err(|_| AppError::BadRequest("Invalid userId".into()))?;
+    Ok(db.collection::<User>("users").find_one(doc! { "_id": oid }).await?)
 }

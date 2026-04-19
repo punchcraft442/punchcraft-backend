@@ -67,7 +67,8 @@ macro_rules! build_app {
     ($db:expr) => {{
         use actix_web::{web, App};
         use punchcraft::{
-            admin, auth, directories, media, moderation, notifications, profiles, verification,
+            admin, auth, contact_requests, directories, favorites, media, moderation,
+            notifications, profiles, verification,
         };
 
         let db_data = web::Data::new($db.clone());
@@ -87,6 +88,8 @@ macro_rules! build_app {
                         .configure(media::routes::configure)
                         .configure(moderation::routes::configure)
                         .configure(notifications::routes::configure)
+                        .configure(contact_requests::routes::configure)
+                        .configure(favorites::routes::configure)
                         .configure(admin::routes::configure),
                 ),
         )

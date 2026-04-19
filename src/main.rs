@@ -12,6 +12,11 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
+    // Fail fast if Cloudinary credentials are missing
+    for key in &["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"] {
+        std::env::var(key).unwrap_or_else(|_| panic!("{key} must be set in .env"));
+    }
+
     let mongo_uri = std::env::var("MONGODB_URI")
         .unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
 

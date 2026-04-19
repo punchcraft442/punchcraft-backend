@@ -1,3 +1,8 @@
 mod admin;
 mod auth;
+mod contact_requests;
+mod favorites;
+mod moderation;
+mod notifications;
 mod profiles;
+mod verification;

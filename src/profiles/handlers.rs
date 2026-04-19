@@ -1,5 +1,8 @@
+use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
+use futures_util::TryStreamExt;
 use mongodb::Database;
+use serde::Deserialize;
 use validator::Validate;
 
 use crate::common::{
@@ -10,17 +13,62 @@ use crate::common::{
 };
 use super::{models::*, service};
 
+/// Optional query param: super_admin can pass ?forUserId=xxx to create a profile on behalf of another user.
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct OnBehalfQuery {
+    pub for_user_id: Option<String>,
+}
+
+/// If caller is super_admin and forUserId is provided, use that; otherwise use caller's own id.
+fn resolve_user_id<'a>(caller_id: &'a str, caller_role: &str, for_user_id: Option<&'a str>) -> String {
+    if caller_role == "super_admin" {
+        if let Some(id) = for_user_id {
+            return id.to_string();
+        }
+    }
+    caller_id.to_string()
+}
+
+/// Shared multipart parser — returns (file_bytes, filename).
+async fn parse_image_upload(mut payload: Multipart) -> Result<(Vec<u8>, String), AppError> {
+    while let Some(mut field) = payload
+        .try_next()
+        .await
+        .map_err(|e| AppError::BadRequest(e.to_string()))?
+    {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "file" {
+            let filename = field
+                .content_disposition()
+                .and_then(|cd| cd.get_filename().map(|s| s.to_string()))
+                .unwrap_or_else(|| "upload".to_string());
+            let mut bytes = Vec::new();
+            while let Some(chunk) = field.try_next().await.map_err(|e| AppError::BadRequest(e.to_string()))? {
+                bytes.extend_from_slice(&chunk);
+            }
+            tracing::debug!("parse_image_upload: read {} bytes, filename={:?}", bytes.len(), filename);
+            return Ok((bytes, filename));
+        } else {
+            while field.try_next().await.map_err(|e| AppError::BadRequest(e.to_string()))?.is_some() {}
+        }
+    }
+    Err(AppError::BadRequest("Missing 'file' field in multipart body".into()))
+}
+
 // ── FIGHTER ───────────────────────────────────────────────────────────────────
 
 pub async fn create_fighter(
     req: HttpRequest,
     db: web::Data<Database>,
+    query: web::Query<OnBehalfQuery>,
     body: web::Json<CreateFighterRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = require_auth(&req)?;
     service::enforce_role(&claims.role, "fighter")?;
+    let user_id = resolve_user_id(&claims.sub, &claims.role, query.for_user_id.as_deref());
     body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
-    let profile = service::create_fighter(db.get_ref(), &claims.sub, body.into_inner()).await?;
+    let profile = service::create_fighter(db.get_ref(), &user_id, body.into_inner()).await?;
     Ok(response::created(profile))
 }
 
@@ -94,12 +142,14 @@ pub async fn delete_fight_history(
 pub async fn create_gym(
     req: HttpRequest,
     db: web::Data<Database>,
+    query: web::Query<OnBehalfQuery>,
     body: web::Json<CreateGymRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = require_auth(&req)?;
     service::enforce_role(&claims.role, "gym")?;
+    let user_id = resolve_user_id(&claims.sub, &claims.role, query.for_user_id.as_deref());
     body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
-    let profile = service::create_gym(db.get_ref(), &claims.sub, body.into_inner()).await?;
+    let profile = service::create_gym(db.get_ref(), &user_id, body.into_inner()).await?;
     Ok(response::created(profile))
 }
 
@@ -193,12 +243,14 @@ pub async fn gym_unlink_fighter(
 pub async fn create_coach(
     req: HttpRequest,
     db: web::Data<Database>,
+    query: web::Query<OnBehalfQuery>,
     body: web::Json<CreateCoachRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = require_auth(&req)?;
     service::enforce_role(&claims.role, "coach")?;
+    let user_id = resolve_user_id(&claims.sub, &claims.role, query.for_user_id.as_deref());
     body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
-    let profile = service::create_coach(db.get_ref(), &claims.sub, body.into_inner()).await?;
+    let profile = service::create_coach(db.get_ref(), &user_id, body.into_inner()).await?;
     Ok(response::created(profile))
 }
 
@@ -248,12 +300,14 @@ pub async fn list_coaches(
 pub async fn create_official(
     req: HttpRequest,
     db: web::Data<Database>,
+    query: web::Query<OnBehalfQuery>,
     body: web::Json<CreateOfficialRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = require_auth(&req)?;
     service::enforce_role(&claims.role, "official")?;
+    let user_id = resolve_user_id(&claims.sub, &claims.role, query.for_user_id.as_deref());
     body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
-    let profile = service::create_official(db.get_ref(), &claims.sub, body.into_inner()).await?;
+    let profile = service::create_official(db.get_ref(), &user_id, body.into_inner()).await?;
     Ok(response::created(profile))
 }
 
@@ -303,12 +357,14 @@ pub async fn list_officials(
 pub async fn create_promoter(
     req: HttpRequest,
     db: web::Data<Database>,
+    query: web::Query<OnBehalfQuery>,
     body: web::Json<CreatePromoterRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = require_auth(&req)?;
     service::enforce_role(&claims.role, "promoter")?;
+    let user_id = resolve_user_id(&claims.sub, &claims.role, query.for_user_id.as_deref());
     body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
-    let profile = service::create_promoter(db.get_ref(), &claims.sub, body.into_inner()).await?;
+    let profile = service::create_promoter(db.get_ref(), &user_id, body.into_inner()).await?;
     Ok(response::created(profile))
 }
 
@@ -358,12 +414,14 @@ pub async fn list_promoters(
 pub async fn create_matchmaker(
     req: HttpRequest,
     db: web::Data<Database>,
+    query: web::Query<OnBehalfQuery>,
     body: web::Json<CreateMatchmakerRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = require_auth(&req)?;
     service::enforce_role(&claims.role, "matchmaker")?;
+    let user_id = resolve_user_id(&claims.sub, &claims.role, query.for_user_id.as_deref());
     body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
-    let profile = service::create_matchmaker(db.get_ref(), &claims.sub, body.into_inner()).await?;
+    let profile = service::create_matchmaker(db.get_ref(), &user_id, body.into_inner()).await?;
     Ok(response::created(profile))
 }
 
@@ -413,12 +471,14 @@ pub async fn list_matchmakers(
 pub async fn create_fan(
     req: HttpRequest,
     db: web::Data<Database>,
+    query: web::Query<OnBehalfQuery>,
     body: web::Json<CreateFanRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = require_auth(&req)?;
     service::enforce_role(&claims.role, "fan")?;
+    let user_id = resolve_user_id(&claims.sub, &claims.role, query.for_user_id.as_deref());
     body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
-    let profile = service::create_fan(db.get_ref(), &claims.sub, body.into_inner()).await?;
+    let profile = service::create_fan(db.get_ref(), &user_id, body.into_inner()).await?;
     Ok(response::created(profile))
 }
 
@@ -461,4 +521,42 @@ pub async fn list_fans(
     params: web::Query<PaginationParams>,
 ) -> Result<HttpResponse, AppError> {
     Ok(response::ok(service::list_fans(db.get_ref(), &params).await?))
+}
+
+// ── Revision request (shared across all profile types) ───────────────────────
+
+pub async fn request_revision(
+    req: HttpRequest,
+    db: web::Data<Database>,
+    path: web::Path<String>,
+) -> Result<HttpResponse, AppError> {
+    let claims = require_auth(&req)?;
+    let profile = service::request_revision(db.get_ref(), &path.into_inner(), &claims.sub).await?;
+    Ok(response::ok(profile))
+}
+
+// ── Image uploads ─────────────────────────────────────────────────────────────
+
+pub async fn upload_profile_image(
+    req: HttpRequest,
+    db: web::Data<Database>,
+    path: web::Path<String>,
+    payload: Multipart,
+) -> Result<HttpResponse, AppError> {
+    let claims = require_auth(&req)?;
+    let (data, filename) = parse_image_upload(payload).await?;
+    let profile = service::update_profile_image(db.get_ref(), &path.into_inner(), &claims.sub, data, filename).await?;
+    Ok(response::ok(profile))
+}
+
+pub async fn upload_cover_image(
+    req: HttpRequest,
+    db: web::Data<Database>,
+    path: web::Path<String>,
+    payload: Multipart,
+) -> Result<HttpResponse, AppError> {
+    let claims = require_auth(&req)?;
+    let (data, filename) = parse_image_upload(payload).await?;
+    let profile = service::update_cover_image(db.get_ref(), &path.into_inner(), &claims.sub, data, filename).await?;
+    Ok(response::ok(profile))
 }

@@ -3,11 +3,13 @@
     "name": "PunchCraft API",
     "description": "REST API for PunchCraft — a boxing ecosystem platform for profiling, verifying, and connecting fighters, gyms, coaches, referees/judges, promoters, matchmakers, and fans.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080/api/v1", "type": "string" },
     { "key": "token", "value": "", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "superAdminToken", "value": "", "type": "string" },
     { "key": "profileId", "value": "", "type": "string" },
     { "key": "userId", "value": "", "type": "string" },
     { "key": "gymId", "value": "", "type": "string" },
@@ -31,7 +33,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Kwame Mensah\",\n  \"email\": \"kwame@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"role\": \"fighter\"\n}"
+              "raw": "{\n  \"email\": \"kwame@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"role\": \"fighter\"\n}"
             }
           }
         },
@@ -45,6 +47,9 @@
                   "const res = pm.response.json();",
                   "if (res.data && res.data.accessToken) {",
                   "  pm.collectionVariables.set('token', res.data.accessToken);",
+                  "  if (res.data.user) {",
+                  "    pm.collectionVariables.set('userId', res.data.user.id);",
+                  "  }",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -136,30 +141,6 @@
       ]
     },
     {
-      "name": "Users",
-      "item": [
-        {
-          "name": "Get Current User",
-          "request": {
-            "method": "GET",
-            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] }
-          }
-        },
-        {
-          "name": "Update Current User",
-          "request": {
-            "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phone\": \"+233500000000\",\n  \"profilePhoto\": \"https://cdn.punchcraft.com/photos/user.jpg\",\n  \"socialLinks\": {\n    \"instagram\": \"https://instagram.com/kwameboxing\",\n    \"youtube\": \"https://youtube.com/@kwameboxing\"\n  }\n}"
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "Fighters",
       "item": [
         {
@@ -185,7 +166,8 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Kwame Mensah\",\n  \"ringName\": \"The Accra Lion\",\n  \"nationality\": \"Ghanaian\",\n  \"weightClass\": \"lightweight\",\n  \"stance\": \"orthodox\",\n  \"heightCm\": 175,\n  \"reachCm\": 178,\n  \"record\": { \"wins\": 10, \"losses\": 2, \"draws\": 0, \"kos\": 7 },\n  \"bio\": \"Professional boxer from Accra.\",\n  \"region\": \"Greater Accra\",\n  \"city\": \"Accra\",\n  \"linkedGymId\": \"{{gymId}}\",\n  \"linkedCoachId\": \"{{coachId}}\"\n}"
+              "raw": "{\n  \"fullName\": \"Kwame Mensah\",\n  \"ringName\": \"The Accra Lion\",\n  \"nationality\": \"Ghanaian\",\n  \"weightClass\": \"lightweight\",\n  \"stance\": \"orthodox\",\n  \"heightCm\": 175,\n  \"reachCm\": 178,\n  \"record\": { \"wins\": 10, \"losses\": 2, \"draws\": 0, \"kos\": 7 },\n  \"bio\": \"Professional boxer from Accra.\",\n  \"region\": \"Greater Accra\",\n  \"city\": \"Accra\",\n  \"linkedGymId\": \"{{gymId}}\",\n  \"linkedCoachId\": \"{{coachId}}\"\n}",
+              "description": "Note: linkedGymId and linkedCoachId are optional. Pass ?forUserId=<userId> if caller is super_admin to create on behalf of another user."
             }
           }
         },
@@ -205,18 +187,18 @@
                 { "key": "region", "value": "", "disabled": true },
                 { "key": "city", "value": "", "disabled": true },
                 { "key": "verificationTier", "value": "", "disabled": true },
-                { "key": "weightClass", "value": "", "disabled": true },
-                { "key": "sort", "value": "", "disabled": true }
+                { "key": "weightClass", "value": "", "disabled": true }
               ]
-            }
+            },
+            "description": "Only returns approved + searchable profiles."
           }
         },
         {
           "name": "Get Fighter Profile",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}"] }
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}"] },
+            "description": "Owner can see own draft. Public can only see approved+public profiles."
           }
         },
         {
@@ -239,6 +221,38 @@
           }
         },
         {
+          "name": "Request Revision (Fighter)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}/request-revision", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}", "request-revision"] },
+            "description": "Owner pulls an approved profile back to draft so it can be edited and resubmitted."
+          }
+        },
+        {
+          "name": "Upload Profile Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}/profile-image", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}", "profile-image"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "", "description": "Image file to upload to Cloudinary" }]
+            },
+            "description": "Uploads file to Cloudinary and sets profileImageUrl on the profile. Caller must own the profile."
+          }
+        },
+        {
+          "name": "Upload Cover Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}/cover-image", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters", "{{profileId}}", "cover-image"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "", "description": "Cover image file to upload to Cloudinary" }]
+            },
+            "description": "Uploads file to Cloudinary and sets coverImageUrl on the profile. Caller must own the profile."
+          }
+        },
+        {
           "name": "Add Fight History",
           "request": {
             "method": "POST",
@@ -258,7 +272,7 @@
               "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}/fight-history/:fightId",
               "host": ["{{baseUrl}}"],
               "path": ["profiles", "fighters", "{{profileId}}", "fight-history", ":fightId"],
-              "variable": [{ "key": "fightId", "value": "<fight_history_id>" }]
+              "variable": [{ "key": "fightId", "value": "<fight_history_uuid>" }]
             }
           }
         }
@@ -318,15 +332,14 @@
           "name": "Get Gym Profile",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}"] }
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{gymId}}"] }
           }
         },
         {
           "name": "Update Gym Profile",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}"] },
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{gymId}}"] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
@@ -338,7 +351,37 @@
           "name": "Submit Gym Profile",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}", "submit"] }
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{gymId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Request Revision (Gym)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/request-revision", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{gymId}}", "request-revision"] },
+            "description": "Owner pulls an approved profile back to draft so it can be edited and resubmitted."
+          }
+        },
+        {
+          "name": "Upload Profile Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/profile-image", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{gymId}}", "profile-image"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            }
+          }
+        },
+        {
+          "name": "Upload Cover Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/cover-image", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{gymId}}", "cover-image"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            }
           }
         },
         {
@@ -350,7 +393,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["profiles", "gyms", "{{gymId}}", "coaches", "{{coachId}}"]
             },
-            "description": "Links coach to gym roster. Also adds gym to coach's linkedGymIds (bidirectional)."
+            "description": "Bidirectional: also adds this gym to the coach's linkedGymIds."
           }
         },
         {
@@ -362,7 +405,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["profiles", "gyms", "{{gymId}}", "coaches", "{{coachId}}"]
             },
-            "description": "Removes coach from gym roster. Also removes gym from coach's linkedGymIds (bidirectional)."
+            "description": "Bidirectional: also removes this gym from the coach's linkedGymIds."
           }
         },
         {
@@ -374,7 +417,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["profiles", "gyms", "{{gymId}}", "fighters", "{{fighterId}}"]
             },
-            "description": "Adds fighter to gym roster. Also sets fighter's linkedGymId to this gym (bidirectional)."
+            "description": "Bidirectional: also sets the fighter's linkedGymId to this gym."
           }
         },
         {
@@ -386,7 +429,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["profiles", "gyms", "{{gymId}}", "fighters", "{{fighterId}}"]
             },
-            "description": "Removes fighter from gym roster. Also clears fighter's linkedGymId if it points to this gym (bidirectional)."
+            "description": "Bidirectional: also clears the fighter's linkedGymId if it points to this gym."
           }
         }
       ]
@@ -443,15 +486,14 @@
           "name": "Get Coach Profile",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}"] }
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{coachId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{coachId}}"] }
           }
         },
         {
           "name": "Update Coach Profile",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}"] },
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{coachId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{coachId}}"] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
@@ -463,18 +505,36 @@
           "name": "Submit Coach Profile",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}", "submit"] }
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{coachId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{coachId}}", "submit"] }
           }
         },
         {
-          "name": "Upload Coach Certification",
+          "name": "Request Revision (Coach)",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{profileId}}/certifications", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{profileId}}", "certifications"] },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{coachId}}/request-revision", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{coachId}}", "request-revision"] },
+            "description": "Owner pulls an approved profile back to draft so it can be edited and resubmitted."
+          }
+        },
+        {
+          "name": "Upload Profile Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{coachId}}/profile-image", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{coachId}}", "profile-image"] },
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"documentId\": \"<document_id_from_upload>\",\n  \"fileUrl\": \"https://res.cloudinary.com/example/cert.pdf\",\n  \"title\": \"AIBA Level 2 Coaching Certificate\"\n}"
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            }
+          }
+        },
+        {
+          "name": "Upload Cover Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/coaches/{{coachId}}/cover-image", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches", "{{coachId}}", "cover-image"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
             }
           }
         }
@@ -500,22 +560,13 @@
           "request": {
             "method": "GET",
             "auth": { "type": "noauth" },
-            "url": {
-              "raw": "{{baseUrl}}/profiles/officials?page=1&limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["profiles", "officials"],
-              "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" }
-              ]
-            }
+            "url": { "raw": "{{baseUrl}}/profiles/officials?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["profiles", "officials"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
           }
         },
         {
           "name": "Get Official Profile",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
             "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}"] }
           }
         },
@@ -525,10 +576,7 @@
             "method": "PATCH",
             "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}"] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"experienceYears\": 14,\n  \"availability\": \"full-time\"\n}"
-            }
+            "body": { "mode": "raw", "raw": "{\n  \"experienceYears\": 14,\n  \"availability\": \"full-time\"\n}" }
           }
         },
         {
@@ -539,15 +587,27 @@
           }
         },
         {
-          "name": "Upload Official Credentials",
+          "name": "Request Revision (Official)",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}/credentials", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}", "credentials"] },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"documentId\": \"<document_id_from_upload>\",\n  \"fileUrl\": \"https://res.cloudinary.com/example/license.pdf\",\n  \"title\": \"WBC Referee License\"\n}"
-            }
+            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}/request-revision", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}", "request-revision"] },
+            "description": "Owner pulls an approved profile back to draft so it can be edited and resubmitted."
+          }
+        },
+        {
+          "name": "Upload Profile Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}/profile-image", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}", "profile-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
+          }
+        },
+        {
+          "name": "Upload Cover Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/officials/{{profileId}}/cover-image", "host": ["{{baseUrl}}"], "path": ["profiles", "officials", "{{profileId}}", "cover-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
           }
         }
       ]
@@ -579,7 +639,6 @@
           "name": "Get Promoter Profile",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
             "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}"] }
           }
         },
@@ -597,6 +656,30 @@
           "request": {
             "method": "POST",
             "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Request Revision (Promoter)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}/request-revision", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}", "request-revision"] },
+            "description": "Owner pulls an approved profile back to draft so it can be edited and resubmitted."
+          }
+        },
+        {
+          "name": "Upload Profile Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}/profile-image", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}", "profile-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
+          }
+        },
+        {
+          "name": "Upload Cover Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/promoters/{{profileId}}/cover-image", "host": ["{{baseUrl}}"], "path": ["profiles", "promoters", "{{profileId}}", "cover-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
           }
         }
       ]
@@ -628,7 +711,6 @@
           "name": "Get Matchmaker Profile",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
             "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}"] }
           }
         },
@@ -646,6 +728,30 @@
           "request": {
             "method": "POST",
             "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Request Revision (Matchmaker)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}/request-revision", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}", "request-revision"] },
+            "description": "Owner pulls an approved profile back to draft so it can be edited and resubmitted."
+          }
+        },
+        {
+          "name": "Upload Profile Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}/profile-image", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}", "profile-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
+          }
+        },
+        {
+          "name": "Upload Cover Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/matchmakers/{{profileId}}/cover-image", "host": ["{{baseUrl}}"], "path": ["profiles", "matchmakers", "{{profileId}}", "cover-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
           }
         }
       ]
@@ -677,7 +783,6 @@
           "name": "Get Fan Profile",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
             "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}"] }
           }
         },
@@ -695,6 +800,30 @@
           "request": {
             "method": "POST",
             "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}/submit", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}", "submit"] }
+          }
+        },
+        {
+          "name": "Request Revision (Fan)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}/request-revision", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}", "request-revision"] },
+            "description": "Owner pulls an approved profile back to draft so it can be edited and resubmitted."
+          }
+        },
+        {
+          "name": "Upload Profile Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}/profile-image", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}", "profile-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
+          }
+        },
+        {
+          "name": "Upload Cover Image",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/profiles/fans/{{profileId}}/cover-image", "host": ["{{baseUrl}}"], "path": ["profiles", "fans", "{{profileId}}", "cover-image"] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }
           }
         }
       ]
@@ -719,10 +848,146 @@
                 { "key": "region", "value": "", "disabled": true },
                 { "key": "city", "value": "", "disabled": true },
                 { "key": "verificationTier", "value": "", "disabled": true },
-                { "key": "weightClass", "value": "", "disabled": true },
-                { "key": "sort", "value": "verified_first", "disabled": true }
+                { "key": "weightClass", "value": "", "disabled": true }
               ]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Media",
+      "item": [
+        {
+          "name": "Upload Media Asset",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/media/upload", "host": ["{{baseUrl}}"], "path": ["media", "upload"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Image file" },
+                { "key": "profileId", "value": "{{profileId}}", "type": "text" },
+                { "key": "category", "value": "gallery", "type": "text", "description": "gallery | highlight | certificate" }
+              ]
+            },
+            "description": "Uploads file to Cloudinary and records in mediaAssets collection."
+          }
+        },
+        {
+          "name": "Delete Media Asset",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/media/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", ":id"],
+              "variable": [{ "key": "id", "value": "<media_asset_id>" }]
+            },
+            "description": "Deletes from Cloudinary and removes from mediaAssets collection."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verification",
+      "item": [
+        {
+          "name": "Submit Verification Document",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/verification/documents", "host": ["{{baseUrl}}"], "path": ["verification", "documents"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"fileUrl\": \"https://res.cloudinary.com/example/doc.pdf\",\n  \"documentType\": \"government_id\"\n}"
+            },
+            "description": "Submit a verification document for admin review. fileUrl should come from a prior /media/upload call."
+          }
+        },
+        {
+          "name": "List Pending Documents (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/verification/documents/pending", "host": ["{{baseUrl}}"], "path": ["verification", "documents", "pending"] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "description": "Admin only. Returns all documents with reviewStatus=pending, oldest first."
+          }
+        },
+        {
+          "name": "Review Verification Document (Admin)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/verification/documents/:id/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["verification", "documents", ":id", "review"],
+              "variable": [{ "key": "id", "value": "<document_id>" }]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"adminNote\": \"Document verified and accepted.\"\n}"
+            },
+            "description": "status must be 'approved' or 'rejected'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Submit Report",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/reports", "host": ["{{baseUrl}}"], "path": ["reports"] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"<profile_id>\",\n  \"reason\": \"This profile appears to be a fake account.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List All Reports (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/reports/admin", "host": ["{{baseUrl}}"], "path": ["reports", "admin"] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "description": "Admin only. Returns all reports sorted newest first."
+          }
+        },
+        {
+          "name": "Decide on Report (Admin)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/reports/admin/:id/decision",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "admin", ":id", "decision"],
+              "variable": [{ "key": "id", "value": "<report_id>" }]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"dismissed\",\n  \"adminNote\": \"No evidence of policy violation.\"\n}"
+            },
+            "description": "status must be 'reviewed' or 'dismissed'."
           }
         }
       ]
@@ -746,18 +1011,24 @@
           "name": "Get My Contact Requests",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/contact-requests?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["contact-requests"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+            "url": { "raw": "{{baseUrl}}/contact-requests", "host": ["{{baseUrl}}"], "path": ["contact-requests"] }
           }
         },
         {
           "name": "Update Contact Request Status",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/contact-requests/:id", "host": ["{{baseUrl}}"], "path": ["contact-requests", ":id"], "variable": [{ "key": "id", "value": "<contact_request_id>" }] },
+            "url": {
+              "raw": "{{baseUrl}}/contact-requests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["contact-requests", ":id"],
+              "variable": [{ "key": "id", "value": "<contact_request_id>" }]
+            },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"accepted\"\n}"
+              "raw": "{\n  \"status\": \"accepted\"\n}",
+              "description": "status must be 'accepted' or 'declined'."
             }
           }
         }
@@ -779,31 +1050,20 @@
           "name": "Get Favorites",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/favorites?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["favorites"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+            "url": { "raw": "{{baseUrl}}/favorites", "host": ["{{baseUrl}}"], "path": ["favorites"] }
           }
         },
         {
           "name": "Remove from Favorites",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/favorites/:profileId", "host": ["{{baseUrl}}"], "path": ["favorites", ":profileId"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Reports",
-      "item": [
-        {
-          "name": "Submit Report",
-          "request": {
-            "method": "POST",
-            "url": { "raw": "{{baseUrl}}/reports", "host": ["{{baseUrl}}"], "path": ["reports"] },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"profileId\": \"<profile_id>\",\n  \"reason\": \"fake_profile\",\n  \"details\": \"This profile appears to be impersonating a real fighter.\"\n}"
-            }
+            "url": {
+              "raw": "{{baseUrl}}/favorites/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["favorites", ":id"],
+              "variable": [{ "key": "id", "value": "<favorite_id>" }]
+            },
+            "description": "Pass the favorite document id (from GET /favorites), not the profileId."
           }
         }
       ]
@@ -815,76 +1075,26 @@
           "name": "Get Notifications",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/notifications?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["notifications"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+            "url": { "raw": "{{baseUrl}}/notifications", "host": ["{{baseUrl}}"], "path": ["notifications"] }
           }
         },
         {
           "name": "Mark Notification as Read",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/notifications/:id/read", "host": ["{{baseUrl}}"], "path": ["notifications", ":id", "read"], "variable": [{ "key": "id", "value": "<notification_id>" }] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Uploads",
-      "item": [
-        {
-          "name": "Upload Media File",
-          "request": {
-            "method": "POST",
-            "url": { "raw": "{{baseUrl}}/uploads/media", "host": ["{{baseUrl}}"], "path": ["uploads", "media"] },
-            "body": {
-              "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            "url": {
+              "raw": "{{baseUrl}}/notifications/:id/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", ":id", "read"],
+              "variable": [{ "key": "id", "value": "<notification_id>" }]
             }
-          }
-        },
-        {
-          "name": "Upload Verification Document",
-          "request": {
-            "method": "POST",
-            "url": { "raw": "{{baseUrl}}/uploads/documents/verification", "host": ["{{baseUrl}}"], "path": ["uploads", "documents", "verification"] },
-            "body": {
-              "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Metadata",
-      "item": [
-        {
-          "name": "Get Weight Classes",
-          "request": {
-            "method": "GET",
-            "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/metadata/weight-classes", "host": ["{{baseUrl}}"], "path": ["metadata", "weight-classes"] }
-          }
-        },
-        {
-          "name": "Get Regions",
-          "request": {
-            "method": "GET",
-            "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/metadata/regions", "host": ["{{baseUrl}}"], "path": ["metadata", "regions"] }
-          }
-        },
-        {
-          "name": "Get Verification Tiers",
-          "request": {
-            "method": "GET",
-            "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/metadata/verification-tiers", "host": ["{{baseUrl}}"], "path": ["metadata", "verification-tiers"] }
           }
         }
       ]
     },
     {
       "name": "Admin",
+      "description": "Requires admin or super_admin token. Use {{adminToken}} or {{superAdminToken}} as appropriate.",
       "item": [
         {
           "name": "Approval Queue",
@@ -893,64 +1103,62 @@
               "name": "Get Approval Queue",
               "request": {
                 "method": "GET",
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
                 "url": {
-                  "raw": "{{baseUrl}}/admin/approval-queue?page=1&limit=20",
+                  "raw": "{{baseUrl}}/admin/profiles/queue?page=1&limit=20",
                   "host": ["{{baseUrl}}"],
-                  "path": ["admin", "approval-queue"],
-                  "query": [
-                    { "key": "page", "value": "1" },
-                    { "key": "limit", "value": "20" },
-                    { "key": "role", "value": "", "disabled": true },
-                    { "key": "status", "value": "submitted", "disabled": true }
-                  ]
-                }
+                  "path": ["admin", "profiles", "queue"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+                },
+                "description": "Lists all profiles with status=submitted, oldest first."
               }
             },
             {
               "name": "Approve Profile",
               "request": {
                 "method": "POST",
-                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/approve", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "approve"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"verificationTier\": \"unverified\",\n  \"visibility\": \"public\",\n  \"note\": \"Profile meets all requirements.\"\n}"
-                }
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/profiles/:id/approve",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "profiles", ":id", "approve"],
+                  "variable": [{ "key": "id", "value": "<profile_id>" }]
+                },
+                "description": "Sets status=approved, visibility=public, searchable=true. Sends approval email."
               }
             },
             {
               "name": "Reject Profile",
               "request": {
                 "method": "POST",
-                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/reject", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "reject"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/profiles/:id/reject",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "profiles", ":id", "reject"],
+                  "variable": [{ "key": "id", "value": "<profile_id>" }]
+                },
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"reason\": \"Profile information is incomplete or unverifiable.\"\n}"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "name": "Profile Management",
-          "item": [
-            {
-              "name": "Assign Verification Tier",
-              "request": {
-                "method": "PATCH",
-                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/verification-tier", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "verification-tier"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"verificationTier\": \"tier_2_verified\"\n}" }
+                "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Profile information is incomplete or unverifiable.\"\n}" }
               }
             },
             {
-              "name": "Change Profile Visibility",
+              "name": "Set Verification Tier",
               "request": {
                 "method": "PATCH",
-                "url": { "raw": "{{baseUrl}}/admin/profiles/:profileId/visibility", "host": ["{{baseUrl}}"], "path": ["admin", "profiles", ":profileId", "visibility"], "variable": [{ "key": "profileId", "value": "<profile_id>" }] },
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/profiles/:id/verify",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "profiles", ":id", "verify"],
+                  "variable": [{ "key": "id", "value": "<profile_id>" }]
+                },
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"visibility\": \"public\"\n}" }
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tier\": \"tier2_verified\"\n}",
+                  "description": "tier must be: unverified | tier2_verified | tier1_managed_verified"
+                }
               }
             }
           ]
@@ -959,130 +1167,104 @@
           "name": "User Management",
           "item": [
             {
-              "name": "Update User Status",
-              "request": {
-                "method": "PATCH",
-                "url": { "raw": "{{baseUrl}}/admin/users/:userId/status", "host": ["{{baseUrl}}"], "path": ["admin", "users", ":userId", "status"], "variable": [{ "key": "userId", "value": "<user_id>" }] },
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"accountStatus\": \"suspended\",\n  \"reason\": \"Violation of community guidelines.\"\n}" }
-              }
-            }
-          ]
-        },
-        {
-          "name": "Moderation",
-          "item": [
-            {
-              "name": "Get Reports",
+              "name": "List Users",
               "request": {
                 "method": "GET",
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
                 "url": {
-                  "raw": "{{baseUrl}}/admin/reports?page=1&limit=20",
+                  "raw": "{{baseUrl}}/admin/users?page=1&limit=20",
                   "host": ["{{baseUrl}}"],
-                  "path": ["admin", "reports"],
-                  "query": [
-                    { "key": "page", "value": "1" },
-                    { "key": "limit", "value": "20" },
-                    { "key": "status", "value": "open", "disabled": true }
-                  ]
+                  "path": ["admin", "users"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
                 }
               }
             },
             {
-              "name": "Resolve Report",
-              "request": {
-                "method": "PATCH",
-                "url": { "raw": "{{baseUrl}}/admin/reports/:id", "host": ["{{baseUrl}}"], "path": ["admin", "reports", ":id"], "variable": [{ "key": "id", "value": "<report_id>" }] },
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"resolution\": \"dismissed\",\n  \"notes\": \"No evidence of policy violation found.\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Hide Media",
-              "request": {
-                "method": "PATCH",
-                "url": { "raw": "{{baseUrl}}/admin/media/:mediaId/hide", "host": ["{{baseUrl}}"], "path": ["admin", "media", ":mediaId", "hide"], "variable": [{ "key": "mediaId", "value": "<media_id>" }] }
-              }
-            }
-          ]
-        },
-        {
-          "name": "Verification Documents",
-          "item": [
-            {
-              "name": "List Verification Documents",
+              "name": "Get User",
               "request": {
                 "method": "GET",
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
                 "url": {
-                  "raw": "{{baseUrl}}/admin/verification-documents?page=1&limit=20",
+                  "raw": "{{baseUrl}}/admin/users/:id",
                   "host": ["{{baseUrl}}"],
-                  "path": ["admin", "verification-documents"],
-                  "query": [
-                    { "key": "page", "value": "1" },
-                    { "key": "limit", "value": "20" },
-                    { "key": "profileId", "value": "", "disabled": true },
-                    { "key": "reviewStatus", "value": "pending", "disabled": true }
-                  ]
+                  "path": ["admin", "users", ":id"],
+                  "variable": [{ "key": "id", "value": "{{userId}}" }]
                 }
               }
             },
             {
-              "name": "Get Verification Document",
-              "request": {
-                "method": "GET",
-                "url": { "raw": "{{baseUrl}}/admin/verification-documents/:id", "host": ["{{baseUrl}}"], "path": ["admin", "verification-documents", ":id"], "variable": [{ "key": "id", "value": "<document_id>" }] }
-              }
-            },
-            {
-              "name": "Review Verification Document",
-              "request": {
-                "method": "PATCH",
-                "url": { "raw": "{{baseUrl}}/admin/verification-documents/:id/review", "host": ["{{baseUrl}}"], "path": ["admin", "verification-documents", ":id", "review"], "variable": [{ "key": "id", "value": "<document_id>" }] },
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"reviewStatus\": \"approved\",\n  \"reviewNotes\": \"Document verified and accepted.\"\n}"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "name": "Audit & Metadata",
-          "item": [
-            {
-              "name": "Get Audit Logs",
-              "request": {
-                "method": "GET",
-                "url": { "raw": "{{baseUrl}}/admin/audit-logs?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["admin", "audit-logs"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
-              }
-            },
-            {
-              "name": "Create Weight Class",
+              "name": "Suspend User",
               "request": {
                 "method": "POST",
-                "url": { "raw": "{{baseUrl}}/admin/metadata/weight-classes", "host": ["{{baseUrl}}"], "path": ["admin", "metadata", "weight-classes"] },
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"name\": \"cruiserweight\"\n}" }
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/:id/suspend",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "users", ":id", "suspend"],
+                  "variable": [{ "key": "id", "value": "{{userId}}" }]
+                },
+                "description": "Admin can suspend regular users. super_admin can suspend anyone including other admins."
               }
             },
             {
-              "name": "Update Weight Class",
+              "name": "Activate User",
               "request": {
-                "method": "PATCH",
-                "url": { "raw": "{{baseUrl}}/admin/metadata/weight-classes/:id", "host": ["{{baseUrl}}"], "path": ["admin", "metadata", "weight-classes", ":id"], "variable": [{ "key": "id", "value": "<weight_class_id>" }] },
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"name\": \"super-cruiserweight\"\n}" }
+                "method": "POST",
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/:id/activate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "users", ":id", "activate"],
+                  "variable": [{ "key": "id", "value": "{{userId}}" }]
+                },
+                "description": "Clears suspension and ensures is_active=true."
               }
             },
             {
-              "name": "Delete Weight Class",
+              "name": "Create User Directly (Super Admin)",
+              "request": {
+                "method": "POST",
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{superAdminToken}}", "type": "string" }] },
+                "url": { "raw": "{{baseUrl}}/admin/users", "host": ["{{baseUrl}}"], "path": ["admin", "users"] },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"role\": \"fighter\"\n}"
+                },
+                "description": "super_admin only. Creates a user that is immediately active — no email activation required. role: fighter | gym | coach | official | promoter | matchmaker | fan | admin"
+              }
+            },
+            {
+              "name": "Ban User (Super Admin)",
               "request": {
                 "method": "DELETE",
-                "url": { "raw": "{{baseUrl}}/admin/metadata/weight-classes/:id", "host": ["{{baseUrl}}"], "path": ["admin", "metadata", "weight-classes", ":id"], "variable": [{ "key": "id", "value": "<weight_class_id>" }] }
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{superAdminToken}}", "type": "string" }] },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/:id/ban",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "users", ":id", "ban"],
+                  "variable": [{ "key": "id", "value": "{{userId}}" }]
+                },
+                "description": "super_admin only. Permanently deletes the user account."
+              }
+            },
+            {
+              "name": "Change User Role (Super Admin)",
+              "request": {
+                "method": "PATCH",
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{superAdminToken}}", "type": "string" }] },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/:id/role",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "users", ":id", "role"],
+                  "variable": [{ "key": "id", "value": "{{userId}}" }]
+                },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"admin\"\n}"
+                },
+                "description": "super_admin only. Changes the user's role. Their existing JWT stays valid until expiry."
               }
             }
           ]
