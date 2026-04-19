@@ -9,7 +9,10 @@
     { "key": "baseUrl", "value": "http://localhost:8080/api/v1", "type": "string" },
     { "key": "token", "value": "", "type": "string" },
     { "key": "profileId", "value": "", "type": "string" },
-    { "key": "userId", "value": "", "type": "string" }
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "gymId", "value": "", "type": "string" },
+    { "key": "coachId", "value": "", "type": "string" },
+    { "key": "fighterId", "value": "", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -161,13 +164,28 @@
       "item": [
         {
           "name": "Create Fighter Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('profileId', res.data.id);",
+                  "  pm.collectionVariables.set('fighterId', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": { "raw": "{{baseUrl}}/profiles/fighters", "host": ["{{baseUrl}}"], "path": ["profiles", "fighters"] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Kwame Mensah\",\n  \"ringName\": \"The Accra Lion\",\n  \"nationality\": \"Ghanaian\",\n  \"weightClass\": \"lightweight\",\n  \"stance\": \"orthodox\",\n  \"heightCm\": 175,\n  \"reachCm\": 178,\n  \"record\": { \"wins\": 10, \"losses\": 2, \"draws\": 0, \"kos\": 7 },\n  \"bio\": \"Professional boxer from Accra.\",\n  \"region\": \"Greater Accra\",\n  \"city\": \"Accra\"\n}"
+              "raw": "{\n  \"fullName\": \"Kwame Mensah\",\n  \"ringName\": \"The Accra Lion\",\n  \"nationality\": \"Ghanaian\",\n  \"weightClass\": \"lightweight\",\n  \"stance\": \"orthodox\",\n  \"heightCm\": 175,\n  \"reachCm\": 178,\n  \"record\": { \"wins\": 10, \"losses\": 2, \"draws\": 0, \"kos\": 7 },\n  \"bio\": \"Professional boxer from Accra.\",\n  \"region\": \"Greater Accra\",\n  \"city\": \"Accra\",\n  \"linkedGymId\": \"{{gymId}}\",\n  \"linkedCoachId\": \"{{coachId}}\"\n}"
             }
           }
         },
@@ -209,7 +227,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"bio\": \"Updated bio.\",\n  \"weightClass\": \"welterweight\"\n}"
+              "raw": "{\n  \"bio\": \"Updated bio.\",\n  \"weightClass\": \"welterweight\",\n  \"linkedGymId\": \"{{gymId}}\",\n  \"linkedCoachId\": \"{{coachId}}\"\n}"
             }
           }
         },
@@ -231,6 +249,18 @@
               "raw": "{\n  \"opponentName\": \"Kofi Asare\",\n  \"eventName\": \"Accra Fight Night\",\n  \"eventDate\": \"2026-03-15\",\n  \"result\": \"win\",\n  \"method\": \"KO\",\n  \"round\": 4\n}"
             }
           }
+        },
+        {
+          "name": "Delete Fight History Entry",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/profiles/fighters/{{profileId}}/fight-history/:fightId",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "fighters", "{{profileId}}", "fight-history", ":fightId"],
+              "variable": [{ "key": "fightId", "value": "<fight_history_id>" }]
+            }
+          }
         }
       ]
     },
@@ -239,6 +269,21 @@
       "item": [
         {
           "name": "Create Gym Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('profileId', res.data.id);",
+                  "  pm.collectionVariables.set('gymId', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": { "raw": "{{baseUrl}}/profiles/gyms", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms"] },
@@ -300,14 +345,48 @@
           "name": "Link Coach to Gym",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}/coaches/:coachId", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}", "coaches", ":coachId"], "variable": [{ "key": "coachId", "value": "<coach_profile_id>" }] }
+            "url": {
+              "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/coaches/{{coachId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "gyms", "{{gymId}}", "coaches", "{{coachId}}"]
+            },
+            "description": "Links coach to gym roster. Also adds gym to coach's linkedGymIds (bidirectional)."
+          }
+        },
+        {
+          "name": "Unlink Coach from Gym",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/coaches/{{coachId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "gyms", "{{gymId}}", "coaches", "{{coachId}}"]
+            },
+            "description": "Removes coach from gym roster. Also removes gym from coach's linkedGymIds (bidirectional)."
           }
         },
         {
           "name": "Add Fighter to Gym Roster",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/profiles/gyms/{{profileId}}/fighters/:fighterId", "host": ["{{baseUrl}}"], "path": ["profiles", "gyms", "{{profileId}}", "fighters", ":fighterId"], "variable": [{ "key": "fighterId", "value": "<fighter_profile_id>" }] }
+            "url": {
+              "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/fighters/{{fighterId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "gyms", "{{gymId}}", "fighters", "{{fighterId}}"]
+            },
+            "description": "Adds fighter to gym roster. Also sets fighter's linkedGymId to this gym (bidirectional)."
+          }
+        },
+        {
+          "name": "Remove Fighter from Gym Roster",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/profiles/gyms/{{gymId}}/fighters/{{fighterId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", "gyms", "{{gymId}}", "fighters", "{{fighterId}}"]
+            },
+            "description": "Removes fighter from gym roster. Also clears fighter's linkedGymId if it points to this gym (bidirectional)."
           }
         }
       ]
@@ -317,13 +396,28 @@
       "item": [
         {
           "name": "Create Coach Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('profileId', res.data.id);",
+                  "  pm.collectionVariables.set('coachId', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": { "raw": "{{baseUrl}}/profiles/coaches", "host": ["{{baseUrl}}"], "path": ["profiles", "coaches"] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Emmanuel Tetteh\",\n  \"bio\": \"20 years coaching experience.\",\n  \"specialties\": [\"footwork\", \"combinations\"]\n}"
+              "raw": "{\n  \"fullName\": \"Emmanuel Tetteh\",\n  \"bio\": \"20 years coaching experience.\",\n  \"experienceSummary\": \"Trained 15 professional fighters.\",\n  \"specialties\": [\"footwork\", \"combinations\"],\n  \"linkedGymIds\": [\"{{gymId}}\"]\n}"
             }
           }
         },

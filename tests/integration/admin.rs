@@ -39,16 +39,16 @@ where
     let jwt = register_and_get_jwt(app, db, email, "fighter").await;
 
     let req = test::TestRequest::post()
-        .uri("/api/v1/profiles")
+        .uri("/api/v1/profiles/fighters")
         .insert_header(("Authorization", format!("Bearer {}", jwt)))
-        .set_json(json!({ "display_name": "Test Fighter", "role": "fighter" }))
+        .set_json(json!({ "fullName": "Test Fighter", "weightClass": "Heavyweight" }))
         .to_request();
     let resp = test::call_service(app, req).await;
     let body: Value = test::read_body_json(resp).await;
     let profile_id = body["data"]["id"].as_str().unwrap().to_string();
 
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/profiles/{}/submit", profile_id))
+        .uri(&format!("/api/v1/profiles/fighters/{}/submit", profile_id))
         .insert_header(("Authorization", format!("Bearer {}", jwt)))
         .to_request();
     test::call_service(app, req).await;
@@ -130,9 +130,9 @@ async fn test_cannot_approve_draft_profile() {
 
     // Create but do NOT submit
     let req = test::TestRequest::post()
-        .uri("/api/v1/profiles")
+        .uri("/api/v1/profiles/fighters")
         .insert_header(("Authorization", format!("Bearer {}", jwt)))
-        .set_json(json!({ "display_name": "Draft Fighter", "role": "fighter" }))
+        .set_json(json!({ "fullName": "Draft Fighter", "weightClass": "Heavyweight" }))
         .to_request();
     let resp = test::call_service(&app, req).await;
     let body: Value = test::read_body_json(resp).await;
@@ -244,7 +244,7 @@ async fn test_rejected_profile_can_be_resubmitted() {
 
     // User resubmits — must succeed
     let req = test::TestRequest::post()
-        .uri(&format!("/api/v1/profiles/{}/submit", profile_id))
+        .uri(&format!("/api/v1/profiles/fighters/{}/submit", profile_id))
         .insert_header(("Authorization", format!("Bearer {}", user_jwt)))
         .to_request();
 
@@ -277,7 +277,7 @@ async fn test_approved_profile_cannot_be_edited_directly() {
 
     // User attempts to edit — must be rejected
     let req = test::TestRequest::patch()
-        .uri(&format!("/api/v1/profiles/{}", profile_id))
+        .uri(&format!("/api/v1/profiles/fighters/{}", profile_id))
         .insert_header(("Authorization", format!("Bearer {}", user_jwt)))
         .set_json(json!({ "bio": "Trying to edit after approval" }))
         .to_request();

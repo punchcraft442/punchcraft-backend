@@ -1,8 +1,10 @@
 pub mod admin;
 pub mod auth;
 pub mod common;
+pub mod contact_requests;
 pub mod directories;
 pub mod docs;
+pub mod favorites;
 pub mod media;
 pub mod moderation;
 pub mod notifications;

@@ -304,7 +304,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericMessageResponse'
+                $ref: '#/components/schemas/FighterProfileResponse'
 
   /profiles/fighters/{id}/fight-history:
     post:
@@ -320,11 +320,28 @@ paths:
               $ref: '#/components/schemas/CreateFightHistoryRequest'
       responses:
         '201':
-          description: Fight history entry created
+          description: Updated fighter profile including new fight history entry
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FightHistoryResponse'
+                $ref: '#/components/schemas/FighterProfileResponse'
+
+  /profiles/fighters/{id}/fight-history/{fightId}:
+    delete:
+      tags: [Fighters]
+      summary: Delete a fight history entry
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+        - name: fightId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Fight history entry deleted
+        '404':
+          $ref: '#/components/responses/NotFoundError'
 
   /profiles/gyms:
     post:
@@ -408,7 +425,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericMessageResponse'
+                $ref: '#/components/schemas/GymProfileResponse'
 
   /profiles/gyms/{gymId}/coaches/{coachId}:
     post:
@@ -432,6 +449,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenericMessageResponse'
+    delete:
+      tags: [Gyms]
+      summary: Unlink coach from gym
+      parameters:
+        - name: gymId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: coachId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Coach unlinked from gym
+        '404':
+          $ref: '#/components/responses/NotFoundError'
 
   /profiles/gyms/{gymId}/fighters/{fighterId}:
     post:
@@ -455,6 +491,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenericMessageResponse'
+    delete:
+      tags: [Gyms]
+      summary: Unlink fighter from gym roster
+      parameters:
+        - name: gymId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fighterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Fighter unlinked from gym
+        '404':
+          $ref: '#/components/responses/NotFoundError'
 
   /profiles/coaches:
     post:
@@ -538,7 +593,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericMessageResponse'
+                $ref: '#/components/schemas/CoachProfileResponse'
 
   /profiles/coaches/{id}/certifications:
     post:
@@ -642,7 +697,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericMessageResponse'
+                $ref: '#/components/schemas/OfficialProfileResponse'
 
   /profiles/officials/{id}/credentials:
     post:
@@ -746,7 +801,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericMessageResponse'
+                $ref: '#/components/schemas/PromoterProfileResponse'
 
   /profiles/matchmakers:
     post:
@@ -830,7 +885,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericMessageResponse'
+                $ref: '#/components/schemas/MatchmakerProfileResponse'
 
   /profiles/fans:
     post:
@@ -915,7 +970,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericMessageResponse'
+                $ref: '#/components/schemas/FanProfileResponse'
 
   /directories:
     get:
@@ -1775,6 +1830,38 @@ components:
           type: string
           format: date-time
 
+    ProfileSummary:
+      type: object
+      description: Lightweight profile representation returned by list endpoints
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        role:
+          $ref: '#/components/schemas/RoleType'
+        displayName:
+          type: string
+        status:
+          $ref: '#/components/schemas/ProfileStatus'
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        verificationTier:
+          $ref: '#/components/schemas/VerificationTier'
+        searchable:
+          type: boolean
+        profileImage:
+          type: string
+          format: uri
+        location:
+          $ref: '#/components/schemas/Location'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
     RegisterRequest:
       type: object
       required: [fullName, email, password, role]
@@ -2027,7 +2114,7 @@ components:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/FighterProfile'
+                $ref: '#/components/schemas/ProfileSummary'
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 
@@ -2147,7 +2234,7 @@ components:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/GymProfile'
+                $ref: '#/components/schemas/ProfileSummary'
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 
@@ -2215,7 +2302,7 @@ components:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/CoachProfile'
+                $ref: '#/components/schemas/ProfileSummary'
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 
@@ -2295,7 +2382,7 @@ components:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/OfficialProfile'
+                $ref: '#/components/schemas/ProfileSummary'
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 
@@ -2363,7 +2450,7 @@ components:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/PromoterProfile'
+                $ref: '#/components/schemas/ProfileSummary'
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 
@@ -2433,7 +2520,7 @@ components:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/MatchmakerProfile'
+                $ref: '#/components/schemas/ProfileSummary'
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 
@@ -2935,7 +3022,7 @@ components:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/FanProfile'
+                $ref: '#/components/schemas/ProfileSummary'
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 

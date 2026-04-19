@@ -1,4 +1,4 @@
-use punchcraft::{admin, auth, common, directories, docs, media, moderation, notifications, profiles, verification};
+use punchcraft::{admin, auth, common, contact_requests, directories, docs, favorites, media, moderation, notifications, profiles, verification};
 
 use actix_cors::Cors;
 use actix_web::{http, web, App, HttpServer};
@@ -67,6 +67,8 @@ async fn main() -> anyhow::Result<()> {
                     .configure(media::routes::configure)
                     .configure(moderation::routes::configure)
                     .configure(notifications::routes::configure)
+                    .configure(contact_requests::routes::configure)
+                    .configure(favorites::routes::configure)
                     .configure(admin::routes::configure)
             )
     })

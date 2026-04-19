@@ -1,9 +1,8 @@
-use mongodb::{bson::doc, Database};
-use futures_util::TryStreamExt;
+use mongodb::Database;
 use serde::Deserialize;
 
 use crate::common::errors::AppError;
-use crate::profiles::models::{Profile, ProfileResponse};
+use crate::profiles::{models::{PaginationParams, PaginatedResponse, ProfileSummary}, repository};
 
 /// Query parameters for GET /directories
 #[derive(Debug, Deserialize)]
@@ -12,32 +11,42 @@ pub struct DirectoryQuery {
     pub region: Option<String>,
     pub city: Option<String>,
     pub verification_tier: Option<String>,
+    pub keyword: Option<String>,
+    pub weight_class: Option<String>,
+    pub page: Option<u32>,
+    pub limit: Option<u32>,
 }
 
-/// Returns only approved + public + searchable profiles.
-pub async fn list(db: &Database, query: DirectoryQuery) -> Result<Vec<ProfileResponse>, AppError> {
-    let mut filter = doc! {
-        "status": "approved",
-        "visibility": "public",
-        "searchable": true,
+/// Returns only approved + searchable profiles across all roles (or filtered by role).
+pub async fn list(
+    db: &Database,
+    query: DirectoryQuery,
+) -> Result<PaginatedResponse<ProfileSummary>, AppError> {
+    let params = PaginationParams {
+        page: query.page,
+        limit: query.limit,
+        keyword: query.keyword,
+        region: query.region,
+        city: query.city,
+        verification_tier: query.verification_tier,
+        weight_class: query.weight_class,
+        sort: None,
     };
 
-    if let Some(role) = query.role {
-        filter.insert("role", role);
-    }
-    if let Some(region) = query.region {
-        filter.insert("location.region", region);
-    }
-    if let Some(city) = query.city {
-        filter.insert("location.city", city);
-    }
-    if let Some(tier) = query.verification_tier {
-        filter.insert("verification_tier", tier);
-    }
+    let role = query.role.as_deref();
+    let (profiles, total) = repository::list_profiles(db, role, &params).await?;
 
-    let col = db.collection::<Profile>("profiles");
-    let cursor = col.find(filter).await?;
-    let profiles: Vec<Profile> = cursor.try_collect().await?;
+    let limit = params.limit() as u64;
+    let total_pages = if limit == 0 { 0 } else { (total + limit - 1) / limit };
 
-    Ok(profiles.into_iter().map(ProfileResponse::from).collect())
+    use crate::profiles::models::PaginationMeta;
+    Ok(PaginatedResponse {
+        items: profiles.into_iter().map(ProfileSummary::from).collect(),
+        pagination: PaginationMeta {
+            page: params.page(),
+            limit: params.limit(),
+            total_items: total,
+            total_pages,
+        },
+    })
 }

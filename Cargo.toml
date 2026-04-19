@@ -56,6 +56,12 @@ validator = { version = "0.18", features = ["derive"] }
 # Cloudinary (HTTP client for upload API)
 reqwest = { version = "0.12", features = ["json", "multipart"] }
 
+# Multipart form data parsing for media uploads
+actix-multipart = "0.7"
+
+# SHA-1 for Cloudinary API request signing
+sha1 = "0.10"
+
 [dev-dependencies]
 actix-web = { version = "4", features = ["macros"] }
 actix-http = "3"
