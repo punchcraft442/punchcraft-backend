@@ -51,7 +51,7 @@ Instead of one large collection or fully fragmented collections:
 * notifications
 * categories
 * auditLogs
-* profileAssociations (important for relationships)
+* profileAssociations (V2 — relationships are stored as embedded arrays in V1)
 
 ---
 
@@ -64,7 +64,7 @@ role = [
   "fighter",
   "gym",
   "coach",
-  "referee_judge",
+  "official",      // referee/judge — stored as "official" in code and DB
   "promoter",
   "matchmaker",
   "fan"
@@ -72,8 +72,10 @@ role = [
 
 profileStatus = ["draft", "submitted", "approved", "rejected"]
 visibility = ["private", "public"]
-verificationTier = ["unverified", "tier_2_verified", "tier_1_managed_verified"]
-accountStatus = ["active", "suspended", "disabled", "deleted"]
+verificationTier = ["unverified", "tier2_verified", "tier1_managed_verified"]
+// Note: no underscore before the digit — aligns with api-docs.md and the implementation
+accountStatus = ["active", "suspended", "banned"]
+// Note: "disabled"/"deleted" not implemented in V1; ban sets is_active=false
 ```
 
 ---
@@ -117,7 +119,7 @@ This is the **most important collection**.
   role: "fighter",
 
   displayName: String,
-  slug: String,
+  // slug: String  — V2; not implemented in V1
   bio: String,
 
   profileImageUrl: String,

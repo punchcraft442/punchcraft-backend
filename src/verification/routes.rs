@@ -5,7 +5,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/verification")
             .route("/documents", web::post().to(handlers::submit_document))
+            .route("/documents", web::get().to(handlers::list_all))
             .route("/documents/pending", web::get().to(handlers::list_pending))
+            .route("/documents/{id}", web::get().to(handlers::get_document))
             .route("/documents/{id}/review", web::post().to(handlers::review_document)),
     );
 }

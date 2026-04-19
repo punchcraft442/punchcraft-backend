@@ -223,8 +223,9 @@ async fn get_fighter_approved_profile_visible_to_public() {
 
     submit_fighter(&app, FIGHTER_A, id).await;
     admin_approve(&app, id).await;
+    crate::common::approve_verification_doc(&db, id).await;
 
-    // No JWT — approved + public is visible
+    // No JWT — approved + public + verified document is visible
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/profiles/fighters/{}", id))
         .to_request();
@@ -541,11 +542,12 @@ async fn list_fighters_shows_only_approved_and_searchable() {
     let db = setup_db().await;
     let app = build_app!(db);
 
-    // Fighter A: approve → appears
+    // Fighter A: approve + verified doc → appears
     let (_, body) = create_fighter(&app, FIGHTER_A).await;
     let id_a = body["data"]["id"].as_str().unwrap().to_string();
     submit_fighter(&app, FIGHTER_A, &id_a).await;
     admin_approve(&app, &id_a).await;
+    crate::common::approve_verification_doc(&db, &id_a).await;
 
     // Fighter B: draft only → does not appear
     create_fighter(&app, FIGHTER_B).await;
@@ -1679,5 +1681,167 @@ async fn request_revision_then_edit_then_resubmit() {
     let status = submit_fighter(&app, FIGHTER_A, &id).await;
     assert_eq!(status, StatusCode::OK);
 
+    teardown_db(&db).await;
+}
+
+// ── Coach certifications ──────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn add_coach_certification_requires_auth() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/profiles/coaches/000000000000000000000001/certifications")
+        .insert_header(("content-type", "multipart/form-data; boundary=boundary"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn add_coach_certification_missing_file_returns_400() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let jwt = make_jwt(COACH_A, "coach");
+    let req = test::TestRequest::post()
+        .uri("/api/v1/profiles/coaches")
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .set_json(json!({ "fullName": "Coach Cert Test" }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    let body: Value = test::read_body_json(resp).await;
+    let profile_id = body["data"]["id"].as_str().unwrap().to_string();
+
+    let boundary = "testboundary";
+    let body_bytes = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"label\"\r\n\r\nSome label\r\n--{boundary}--\r\n"
+    );
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/coaches/{}/certifications", profile_id))
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .insert_header(("content-type", format!("multipart/form-data; boundary={}", boundary)))
+        .set_payload(body_bytes)
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn add_coach_certification_wrong_owner_returns_403() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let owner_jwt = make_jwt(COACH_A, "coach");
+    let other_jwt = make_jwt("cccccccccccccccccccccccd", "coach");
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/profiles/coaches")
+        .insert_header(("Authorization", format!("Bearer {}", owner_jwt)))
+        .set_json(json!({ "fullName": "Cert Owner Coach" }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    let body: Value = test::read_body_json(resp).await;
+    let profile_id = body["data"]["id"].as_str().unwrap().to_string();
+
+    let boundary = "testboundary";
+    let body_bytes = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"cert.pdf\"\r\nContent-Type: application/pdf\r\n\r\nfake\r\n--{boundary}--\r\n"
+    );
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/coaches/{}/certifications", profile_id))
+        .insert_header(("Authorization", format!("Bearer {}", other_jwt)))
+        .insert_header(("content-type", format!("multipart/form-data; boundary={}", boundary)))
+        .set_payload(body_bytes)
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+    teardown_db(&db).await;
+}
+
+// ── Official credentials ──────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn add_official_credential_requires_auth() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/profiles/officials/000000000000000000000001/credentials")
+        .insert_header(("content-type", "multipart/form-data; boundary=boundary"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn add_official_credential_missing_file_returns_400() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let jwt = make_jwt(OFFICIAL_A, "official");
+    let req = test::TestRequest::post()
+        .uri("/api/v1/profiles/officials")
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .set_json(json!({ "fullName": "Official Cred Test", "officialType": ["referee"] }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    let body: Value = test::read_body_json(resp).await;
+    let profile_id = body["data"]["id"].as_str().unwrap().to_string();
+
+    let boundary = "testboundary";
+    let body_bytes = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"label\"\r\n\r\nLicense\r\n--{boundary}--\r\n"
+    );
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/officials/{}/credentials", profile_id))
+        .insert_header(("Authorization", format!("Bearer {}", jwt)))
+        .insert_header(("content-type", format!("multipart/form-data; boundary={}", boundary)))
+        .set_payload(body_bytes)
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn add_official_credential_wrong_owner_returns_403() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let owner_jwt = make_jwt(OFFICIAL_A, "official");
+    let other_jwt = make_jwt("aaaaaaaaaaaaaaaaaaaaaaab", "official");
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/profiles/officials")
+        .insert_header(("Authorization", format!("Bearer {}", owner_jwt)))
+        .set_json(json!({ "fullName": "Cred Owner Official", "officialType": ["judge"] }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    let body: Value = test::read_body_json(resp).await;
+    let profile_id = body["data"]["id"].as_str().unwrap().to_string();
+
+    let boundary = "testboundary";
+    let body_bytes = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"license.pdf\"\r\nContent-Type: application/pdf\r\n\r\nfake\r\n--{boundary}--\r\n"
+    );
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/profiles/officials/{}/credentials", profile_id))
+        .insert_header(("Authorization", format!("Bearer {}", other_jwt)))
+        .insert_header(("content-type", format!("multipart/form-data; boundary={}", boundary)))
+        .set_payload(body_bytes)
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
     teardown_db(&db).await;
 }

@@ -64,6 +64,9 @@ pub async fn register(
         reset_token_expires: None,
         refresh_token: None,
         refresh_token_expires: None,
+        phone: None,
+        profile_photo: None,
+        social_links: None,
         created_at: now,
         updated_at: now,
     };

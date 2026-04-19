@@ -5,4 +5,5 @@ mod favorites;
 mod moderation;
 mod notifications;
 mod profiles;
+mod users;
 mod verification;

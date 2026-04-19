@@ -39,6 +39,7 @@ fn new_profile(user_id: ObjectId, role: &str, display_name: &str, bio: Option<St
         visibility: ProfileVisibility::Private,
         verification_tier: VerificationTier::Unverified,
         searchable: false,
+        has_verified_document: false,
         weight_class,
         rejection_reason: None,
         created_at: now,
@@ -74,7 +75,7 @@ async fn editable_profile(db: &Database, profile_id: ObjectId, user_id: ObjectId
     Ok(profile)
 }
 
-/// Visibility rule: owner sees all; everyone else only sees approved+public.
+/// Visibility rule: owner sees all; everyone else only sees approved+public+has_verified_document.
 fn check_visibility(profile: &Profile, caller: Option<&str>) -> Result<(), AppError> {
     let is_owner = caller
         .and_then(|uid| ObjectId::parse_str(uid).ok())
@@ -83,36 +84,44 @@ fn check_visibility(profile: &Profile, caller: Option<&str>) -> Result<(), AppEr
     if is_owner {
         return Ok(());
     }
-    if profile.status != ProfileStatus::Approved || profile.visibility != ProfileVisibility::Public {
+    if profile.status != ProfileStatus::Approved
+        || profile.visibility != ProfileVisibility::Public
+        || !profile.has_verified_document
+    {
         return Err(AppError::NotFound);
+    }
+    Ok(())
+}
+
+fn set_nullable<T: serde::Serialize>(
+    d: &mut mongodb::bson::Document,
+    key: &str,
+    field: &Option<Option<T>>,
+) -> Result<(), AppError> {
+    match field {
+        Some(Some(v)) => { d.insert(key, to_bson(v).map_err(bson_err)?); }
+        Some(None)    => { d.insert(key, mongodb::bson::Bson::Null); }
+        None          => {}
     }
     Ok(())
 }
 
 fn base_profile_update_doc(
     display_name: Option<&str>,
-    bio: &Option<String>,
-    location: &Option<Location>,
-    contact_details: &Option<ContactDetails>,
-    social_links: &Option<SocialLinks>,
+    bio: &Option<Option<String>>,
+    location: &Option<Option<Location>>,
+    contact_details: &Option<Option<ContactDetails>>,
+    social_links: &Option<Option<SocialLinks>>,
     weight_class: Option<&str>,
 ) -> Result<mongodb::bson::Document, AppError> {
     let mut d = doc! { "updatedAt": now_str() };
     if let Some(name) = display_name {
         d.insert("displayName", name);
     }
-    if let Some(bio) = bio {
-        d.insert("bio", bio.as_str());
-    }
-    if let Some(loc) = location {
-        d.insert("location", to_bson(loc).map_err(bson_err)?);
-    }
-    if let Some(cd) = contact_details {
-        d.insert("contactDetails", to_bson(cd).map_err(bson_err)?);
-    }
-    if let Some(sl) = social_links {
-        d.insert("socialLinks", to_bson(sl).map_err(bson_err)?);
-    }
+    set_nullable(&mut d, "bio", bio)?;
+    set_nullable(&mut d, "location", location)?;
+    set_nullable(&mut d, "contactDetails", contact_details)?;
+    set_nullable(&mut d, "socialLinks", social_links)?;
     if let Some(wc) = weight_class {
         d.insert("weightClass", wc);
     }
@@ -596,6 +605,7 @@ pub async fn create_coach(
         specialties: req.specialties.unwrap_or_default(),
         linked_gym_ids: req.linked_gym_ids.unwrap_or_default(),
         associated_fighter_ids: vec![],
+        certifications: vec![],
     };
     repository::insert_coach(db, &details).await?;
     let mut saved = profile;
@@ -675,6 +685,38 @@ pub async fn list_coaches(
     Ok(paginated(profiles.into_iter().map(ProfileSummary::from).collect(), total, params))
 }
 
+pub async fn add_coach_certification(
+    db: &Database,
+    profile_id: &str,
+    user_id: &str,
+    data: Vec<u8>,
+    filename: String,
+    label: Option<String>,
+) -> Result<CoachProfileResponse, AppError> {
+    let pid = parse_oid(profile_id)?;
+    let uid = parse_oid(user_id)?;
+    let profile = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    if profile.user_id != uid { return Err(AppError::Forbidden); }
+    if profile.role != "coach" { return Err(AppError::NotFound); }
+
+    let client = crate::media::cloudinary::CloudinaryClient::from_env()?;
+    let folder = format!("punchcraft/profiles/{}/certifications", pid.to_hex());
+    let resp = client.upload_auto(data, filename, &folder).await?;
+
+    let entry = DocumentEntry {
+        id: Uuid::new_v4().to_string(),
+        label,
+        file_url: resp.secure_url,
+        uploaded_at: now_str(),
+    };
+    repository::push_coach_certification(db, pid, &entry).await?;
+    repository::update_profile(db, pid, doc! { "updatedAt": now_str() }).await?;
+
+    let updated = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    let details = repository::find_coach(db, pid).await?.ok_or(AppError::NotFound)?;
+    Ok(CoachProfileResponse::from_parts(updated, details))
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // OFFICIAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -700,6 +742,7 @@ pub async fn create_official(
         licensing_details: req.licensing_details,
         coverage_area: req.coverage_area.unwrap_or_default(),
         availability: req.availability,
+        credentials: vec![],
     };
     repository::insert_official(db, &details).await?;
     let mut saved = profile;
@@ -780,6 +823,38 @@ pub async fn list_officials(
 ) -> Result<PaginatedResponse<ProfileSummary>, AppError> {
     let (profiles, total) = repository::list_profiles(db, Some("official"), params).await?;
     Ok(paginated(profiles.into_iter().map(ProfileSummary::from).collect(), total, params))
+}
+
+pub async fn add_official_credential(
+    db: &Database,
+    profile_id: &str,
+    user_id: &str,
+    data: Vec<u8>,
+    filename: String,
+    label: Option<String>,
+) -> Result<OfficialProfileResponse, AppError> {
+    let pid = parse_oid(profile_id)?;
+    let uid = parse_oid(user_id)?;
+    let profile = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    if profile.user_id != uid { return Err(AppError::Forbidden); }
+    if profile.role != "official" { return Err(AppError::NotFound); }
+
+    let client = crate::media::cloudinary::CloudinaryClient::from_env()?;
+    let folder = format!("punchcraft/profiles/{}/credentials", pid.to_hex());
+    let resp = client.upload_auto(data, filename, &folder).await?;
+
+    let entry = DocumentEntry {
+        id: Uuid::new_v4().to_string(),
+        label,
+        file_url: resp.secure_url,
+        uploaded_at: now_str(),
+    };
+    repository::push_official_credential(db, pid, &entry).await?;
+    repository::update_profile(db, pid, doc! { "updatedAt": now_str() }).await?;
+
+    let updated = repository::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    let details = repository::find_official(db, pid).await?.ok_or(AppError::NotFound)?;
+    Ok(OfficialProfileResponse::from_parts(updated, details))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

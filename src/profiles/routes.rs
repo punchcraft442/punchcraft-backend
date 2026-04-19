@@ -44,7 +44,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}/submit", web::post().to(handlers::submit_coach))
                     .route("/{id}/request-revision", web::post().to(handlers::request_revision))
                     .route("/{id}/profile-image", web::post().to(handlers::upload_profile_image))
-                    .route("/{id}/cover-image", web::post().to(handlers::upload_cover_image)),
+                    .route("/{id}/cover-image", web::post().to(handlers::upload_cover_image))
+                    .route("/{id}/certifications", web::post().to(handlers::add_coach_certification)),
             )
             // ── Officials ─────────────────────────────────────────────────────
             .service(
@@ -56,7 +57,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}/submit", web::post().to(handlers::submit_official))
                     .route("/{id}/request-revision", web::post().to(handlers::request_revision))
                     .route("/{id}/profile-image", web::post().to(handlers::upload_profile_image))
-                    .route("/{id}/cover-image", web::post().to(handlers::upload_cover_image)),
+                    .route("/{id}/cover-image", web::post().to(handlers::upload_cover_image))
+                    .route("/{id}/credentials", web::post().to(handlers::add_official_credential)),
             )
             // ── Promoters ─────────────────────────────────────────────────────
             .service(

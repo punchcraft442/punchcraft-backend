@@ -287,3 +287,115 @@ async fn test_approved_profile_cannot_be_edited_directly() {
 
     teardown_db(&db).await;
 }
+
+// ── Audit logs ────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_audit_logs_requires_admin() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let fighter_jwt = register_and_get_jwt(&app, &db, "fighter_audit@example.com", "fighter").await;
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/admin/audit-logs")
+        .insert_header(("Authorization", format!("Bearer {}", fighter_jwt)))
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn test_audit_logs_requires_auth() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/admin/audit-logs")
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn test_audit_log_recorded_after_approve() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let (profile_id, _) = setup_submitted_profile(&app, &db, "audit_approve@example.com").await;
+    let admin_jwt = make_jwt("audit_admin_id", "admin");
+
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/admin/profiles/{}/approve", profile_id))
+        .insert_header(("Authorization", format!("Bearer {}", admin_jwt)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/admin/audit-logs")
+        .insert_header(("Authorization", format!("Bearer {}", admin_jwt)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = test::read_body_json(resp).await;
+    let items = body["data"]["items"].as_array().unwrap();
+    assert!(!items.is_empty());
+
+    let entry = items.iter().find(|i| i["action"] == "approve_profile").unwrap();
+    assert_eq!(entry["targetId"], profile_id);
+    assert_eq!(entry["targetType"], "profile");
+    assert_eq!(entry["adminId"], "audit_admin_id");
+
+    teardown_db(&db).await;
+}
+
+#[tokio::test]
+async fn test_audit_logs_filter_by_action() {
+    init();
+    let db = setup_db().await;
+    let app = build_app!(db);
+
+    let (profile_id, _) = setup_submitted_profile(&app, &db, "audit_filter@example.com").await;
+    let admin_jwt = make_jwt("filter_admin_id", "admin");
+
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/admin/profiles/{}/approve", profile_id))
+        .insert_header(("Authorization", format!("Bearer {}", admin_jwt)))
+        .to_request();
+    test::call_service(&app, req).await;
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/admin/audit-logs?action=approve_profile")
+        .insert_header(("Authorization", format!("Bearer {}", admin_jwt)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = test::read_body_json(resp).await;
+    let items = body["data"]["items"].as_array().unwrap();
+    assert!(items.iter().all(|i| i["action"] == "approve_profile"));
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/admin/audit-logs?action=reject_profile&adminId=filter_admin_id")
+        .insert_header(("Authorization", format!("Bearer {}", admin_jwt)))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = test::read_body_json(resp).await;
+    let items = body["data"]["items"].as_array().unwrap();
+    assert_eq!(items.len(), 0);
+
+    teardown_db(&db).await;
+}

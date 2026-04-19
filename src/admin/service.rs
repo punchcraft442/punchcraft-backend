@@ -122,6 +122,33 @@ pub async fn set_verification_tier(
     Ok(ProfileSummary::from(updated))
 }
 
+pub async fn set_visibility(
+    db: &Database,
+    profile_id: &str,
+    visibility: &str,
+) -> Result<ProfileSummary, AppError> {
+    if visibility != "public" && visibility != "private" {
+        return Err(AppError::BadRequest("visibility must be 'public' or 'private'".into()));
+    }
+    let pid = ObjectId::parse_str(profile_id).map_err(|_| AppError::BadRequest("Invalid id".into()))?;
+    let profile = profile_repo::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+
+    use crate::profiles::models::ProfileStatus;
+    if profile.status != ProfileStatus::Approved {
+        return Err(AppError::BadRequest("Only approved profiles can have their visibility changed".into()));
+    }
+
+    let searchable = visibility == "public" && profile.has_verified_document;
+    profile_repo::update_profile(db, pid, doc! {
+        "visibility": visibility,
+        "searchable": searchable,
+        "updatedAt": Utc::now().to_rfc3339(),
+    }).await?;
+
+    let updated = profile_repo::find_profile_by_id(db, pid).await?.ok_or(AppError::NotFound)?;
+    Ok(ProfileSummary::from(updated))
+}
+
 // ── User management ───────────────────────────────────────────────────────────
 
 fn users(db: &Database) -> mongodb::Collection<User> {
@@ -211,6 +238,9 @@ pub async fn create_user_direct(
         reset_token_expires: None,
         refresh_token: None,
         refresh_token_expires: None,
+        phone: None,
+        profile_photo: None,
+        social_links: None,
         created_at: now,
         updated_at: now,
     };

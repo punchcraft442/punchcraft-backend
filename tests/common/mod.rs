@@ -61,6 +61,28 @@ pub fn make_jwt(user_id: &str, role: &str) -> String {
     .unwrap()
 }
 
+/// Submit + approve a verification document for a profile, setting has_verified_document=true.
+/// Call this after admin_approve in any test that needs the profile to be publicly visible.
+pub async fn approve_verification_doc(db: &Database, profile_id: &str) {
+    use punchcraft::verification::{models::ReviewDocumentRequest, service as ver_svc};
+    let doc = ver_svc::submit_document(
+        db,
+        profile_id.to_string(),
+        "test_document".to_string(),
+        "https://res.cloudinary.com/test/raw/upload/v1/test.jpg".to_string(),
+    )
+    .await
+    .unwrap();
+    let doc_id = doc.id.unwrap().to_hex();
+    ver_svc::review_document(
+        db,
+        &doc_id,
+        ReviewDocumentRequest { status: "approved".to_string(), admin_note: None },
+    )
+    .await
+    .unwrap();
+}
+
 /// Builds the full actix App wired with a given DB and the test EmailService.
 #[macro_export]
 macro_rules! build_app {
@@ -68,7 +90,7 @@ macro_rules! build_app {
         use actix_web::{web, App};
         use punchcraft::{
             admin, auth, contact_requests, directories, favorites, media, moderation,
-            notifications, profiles, verification,
+            notifications, profiles, users, verification,
         };
 
         let db_data = web::Data::new($db.clone());
@@ -82,6 +104,7 @@ macro_rules! build_app {
                 .service(
                     web::scope("/api/v1")
                         .configure(auth::routes::configure)
+                        .configure(users::routes::configure)
                         .configure(profiles::routes::configure)
                         .configure(directories::routes::configure)
                         .configure(verification::routes::configure)

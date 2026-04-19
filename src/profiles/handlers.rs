@@ -56,6 +56,44 @@ async fn parse_image_upload(mut payload: Multipart) -> Result<(Vec<u8>, String),
     Err(AppError::BadRequest("Missing 'file' field in multipart body".into()))
 }
 
+/// Multipart parser for document uploads — returns (file_bytes, filename, label).
+/// Parses `file` (required) and `label` (optional text field) from the multipart body.
+async fn parse_document_upload(mut payload: Multipart) -> Result<(Vec<u8>, String, Option<String>), AppError> {
+    let mut file_bytes: Option<(Vec<u8>, String)> = None;
+    let mut label: Option<String> = None;
+
+    while let Some(mut field) = payload
+        .try_next()
+        .await
+        .map_err(|e| AppError::BadRequest(e.to_string()))?
+    {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "file" {
+            let filename = field
+                .content_disposition()
+                .and_then(|cd| cd.get_filename().map(|s| s.to_string()))
+                .unwrap_or_else(|| "upload".to_string());
+            let mut bytes = Vec::new();
+            while let Some(chunk) = field.try_next().await.map_err(|e| AppError::BadRequest(e.to_string()))? {
+                bytes.extend_from_slice(&chunk);
+            }
+            file_bytes = Some((bytes, filename));
+        } else if name == "label" {
+            let mut buf = Vec::new();
+            while let Some(chunk) = field.try_next().await.map_err(|e| AppError::BadRequest(e.to_string()))? {
+                buf.extend_from_slice(&chunk);
+            }
+            label = String::from_utf8(buf).ok().filter(|s| !s.is_empty());
+        } else {
+            while field.try_next().await.map_err(|e| AppError::BadRequest(e.to_string()))?.is_some() {}
+        }
+    }
+
+    let (bytes, filename) = file_bytes
+        .ok_or_else(|| AppError::BadRequest("Missing 'file' field in multipart body".into()))?;
+    Ok((bytes, filename, label))
+}
+
 // ── FIGHTER ───────────────────────────────────────────────────────────────────
 
 pub async fn create_fighter(
@@ -295,6 +333,18 @@ pub async fn list_coaches(
     Ok(response::ok(service::list_coaches(db.get_ref(), &params).await?))
 }
 
+pub async fn add_coach_certification(
+    req: HttpRequest,
+    db: web::Data<Database>,
+    path: web::Path<String>,
+    payload: Multipart,
+) -> Result<HttpResponse, AppError> {
+    let claims = require_auth(&req)?;
+    let (data, filename, label) = parse_document_upload(payload).await?;
+    let profile = service::add_coach_certification(db.get_ref(), &path.into_inner(), &claims.sub, data, filename, label).await?;
+    Ok(response::created(profile))
+}
+
 // ── OFFICIAL ──────────────────────────────────────────────────────────────────
 
 pub async fn create_official(
@@ -350,6 +400,18 @@ pub async fn list_officials(
     params: web::Query<PaginationParams>,
 ) -> Result<HttpResponse, AppError> {
     Ok(response::ok(service::list_officials(db.get_ref(), &params).await?))
+}
+
+pub async fn add_official_credential(
+    req: HttpRequest,
+    db: web::Data<Database>,
+    path: web::Path<String>,
+    payload: Multipart,
+) -> Result<HttpResponse, AppError> {
+    let claims = require_auth(&req)?;
+    let (data, filename, label) = parse_document_upload(payload).await?;
+    let profile = service::add_official_credential(db.get_ref(), &path.into_inner(), &claims.sub, data, filename, label).await?;
+    Ok(response::created(profile))
 }
 
 // ── PROMOTER ──────────────────────────────────────────────────────────────────

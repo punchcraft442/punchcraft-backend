@@ -53,12 +53,19 @@ pub async fn update_profile(
     Ok(())
 }
 
+pub async fn set_has_verified_document(db: &Database, profile_id: ObjectId, value: bool) -> Result<(), AppError> {
+    col::<Profile>(db, "profiles")
+        .update_one(doc! { "_id": profile_id }, doc! { "$set": { "hasVerifiedDocument": value } })
+        .await?;
+    Ok(())
+}
+
 pub async fn list_profiles(
     db: &Database,
     role: Option<&str>,
     params: &PaginationParams,
 ) -> Result<(Vec<Profile>, u64), AppError> {
-    let mut filter = doc! { "searchable": true };
+    let mut filter = doc! { "searchable": true, "hasVerifiedDocument": true };
     if let Some(r) = role {
         filter.insert("role", r);
     }
@@ -78,11 +85,19 @@ pub async fn list_profiles(
         filter.insert("weightClass", wc.as_str());
     }
 
+    let sort_doc = match params.sort.as_deref() {
+        Some("name_asc")  => doc! { "displayName": 1 },
+        Some("name_desc") => doc! { "displayName": -1 },
+        Some("oldest")    => doc! { "createdAt": 1 },
+        _                 => doc! { "createdAt": -1 }, // default: newest first
+    };
+
     let c = col::<Profile>(db, "profiles");
     let total = c.count_documents(filter.clone()).await?;
     let opts = mongodb::options::FindOptions::builder()
         .skip(params.skip())
         .limit(params.limit() as i64)
+        .sort(sort_doc)
         .build();
     let items: Vec<Profile> = c.find(filter).with_options(opts).await?.try_collect().await?;
     Ok((items, total))
@@ -257,6 +272,21 @@ pub async fn coach_remove_fighter(db: &Database, profile_id: ObjectId, fighter_i
     Ok(())
 }
 
+pub async fn push_coach_certification(
+    db: &Database,
+    profile_id: ObjectId,
+    entry: &DocumentEntry,
+) -> Result<(), AppError> {
+    let bson = to_bson(entry).map_err(bson_err)?;
+    col::<CoachDetails>(db, "coachDetails")
+        .update_one(
+            doc! { "profileId": profile_id },
+            doc! { "$push": { "certifications": bson } },
+        )
+        .await?;
+    Ok(())
+}
+
 // ── officialDetails ───────────────────────────────────────────────────────────
 
 pub async fn insert_official(db: &Database, d: &OfficialDetails) -> Result<ObjectId, AppError> {
@@ -277,6 +307,21 @@ pub async fn update_official(
 ) -> Result<(), AppError> {
     col::<OfficialDetails>(db, "officialDetails")
         .update_one(doc! { "profileId": profile_id }, doc! { "$set": update })
+        .await?;
+    Ok(())
+}
+
+pub async fn push_official_credential(
+    db: &Database,
+    profile_id: ObjectId,
+    entry: &DocumentEntry,
+) -> Result<(), AppError> {
+    let bson = to_bson(entry).map_err(bson_err)?;
+    col::<OfficialDetails>(db, "officialDetails")
+        .update_one(
+            doc! { "profileId": profile_id },
+            doc! { "$push": { "credentials": bson } },
+        )
         .await?;
     Ok(())
 }

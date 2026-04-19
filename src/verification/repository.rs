@@ -21,11 +21,23 @@ pub async fn find_by_id(db: &Database, id: ObjectId) -> Result<Option<Verificati
 }
 
 pub async fn list_pending(db: &Database) -> Result<Vec<VerificationDocument>, AppError> {
+    list_by_status(db, Some("pending")).await
+}
+
+pub async fn list_all(db: &Database, status: Option<&str>) -> Result<Vec<VerificationDocument>, AppError> {
+    list_by_status(db, status).await
+}
+
+async fn list_by_status(db: &Database, status: Option<&str>) -> Result<Vec<VerificationDocument>, AppError> {
+    let filter = match status {
+        Some(s) => doc! { "reviewStatus": s },
+        None => doc! {},
+    };
     let opts = mongodb::options::FindOptions::builder()
-        .sort(doc! { "submittedAt": 1 })
+        .sort(doc! { "submittedAt": -1 })
         .build();
     let items: Vec<VerificationDocument> = col(db)
-        .find(doc! { "reviewStatus": "pending" })
+        .find(filter)
         .with_options(opts)
         .await?
         .try_collect()

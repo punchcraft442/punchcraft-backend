@@ -9,6 +9,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/profiles/{id}/approve", web::post().to(handlers::approve_profile))
             .route("/profiles/{id}/reject", web::post().to(handlers::reject_profile))
             .route("/profiles/{id}/verify", web::patch().to(handlers::set_verification_tier))
+            .route("/profiles/{id}/visibility", web::patch().to(handlers::set_visibility))
             // ── User management (admin + super_admin) ──────────────────────
             .route("/users", web::get().to(handlers::list_users))
             .route("/users/{id}", web::get().to(handlers::get_user))
@@ -17,6 +18,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             // ── Super admin only ───────────────────────────────────────────
             .route("/users", web::post().to(handlers::create_user_direct))
             .route("/users/{id}/ban", web::delete().to(handlers::ban_user))
-            .route("/users/{id}/role", web::patch().to(handlers::change_user_role)),
+            .route("/users/{id}/role", web::patch().to(handlers::change_user_role))
+            // ── Audit logs ─────────────────────────────────────────────────
+            .route("/audit-logs", web::get().to(handlers::get_audit_logs)),
     );
 }

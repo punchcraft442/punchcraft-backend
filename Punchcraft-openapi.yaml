@@ -194,7 +194,9 @@ paths:
   /users/me:
     get:
       tags: [Users]
-      summary: Get current user
+      summary: Get current user account
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Current user details
@@ -202,9 +204,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CurrentUserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
     patch:
       tags: [Users]
-      summary: Update current user settings
+      summary: Update current user account (phone, profilePhoto, socialLinks)
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -218,6 +224,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CurrentUserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
   /profiles/fighters:
     post:
@@ -811,22 +821,42 @@ paths:
   /profiles/coaches/{id}/certifications:
     post:
       tags: [Coaches]
-      summary: Upload coach certification metadata
+      summary: Upload a coach certification document
+      description: Multipart upload. File (image or PDF) is stored in Cloudinary. Returns the updated coach profile including the new certifications array entry.
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/IdPathParam'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UploadDocumentReferenceRequest'
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The certification file (image or PDF)
+                label:
+                  type: string
+                  description: Optional human-readable label for this certification
       responses:
         '201':
-          description: Certification uploaded
+          description: Certification uploaded — returns updated coach profile
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentReferenceResponse'
+                $ref: '#/components/schemas/CoachProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /profiles/officials:
     post:
@@ -983,22 +1013,42 @@ paths:
   /profiles/officials/{id}/credentials:
     post:
       tags: [Officials]
-      summary: Upload official credentials metadata
+      summary: Upload an official credential document
+      description: Multipart upload. File (image or PDF) is stored in Cloudinary. Returns the updated official profile including the new credentials array entry.
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/IdPathParam'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UploadDocumentReferenceRequest'
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The credential file (image or PDF)
+                label:
+                  type: string
+                  description: Optional human-readable label for this credential
       responses:
         '201':
-          description: Credentials uploaded
+          description: Credential uploaded — returns updated official profile
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentReferenceResponse'
+                $ref: '#/components/schemas/OfficialProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /profiles/promoters:
     post:
@@ -1653,28 +1703,141 @@ paths:
               schema:
                 $ref: '#/components/schemas/UploadMediaResponse'
 
-  /uploads/documents/verification:
+  /verification/documents:
+    get:
+      tags: [Verification]
+      summary: List all verification documents (admin only)
+      description: Returns all documents, newest first. Filter by status using the optional query param.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+          description: Filter by review status. Omit to return all.
+      responses:
+        '200':
+          description: List of verification documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationDocumentListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
     post:
-      tags: [Uploads]
-      summary: Upload verification document
+      tags: [Verification]
+      summary: Submit a verification document
+      description: Upload an image or PDF document for profile verification. The file is stored on Cloudinary and the URL is recorded. Requires Bearer authentication.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required: [file, profileId, documentType]
               properties:
                 file:
                   type: string
                   format: binary
+                  description: The document file (image or PDF)
+                profileId:
+                  type: string
+                  description: The profile this document is submitted for
+                documentType:
+                  type: string
+                  description: "Type of document (e.g. passport, drivers_license, boxing_license)"
       responses:
         '201':
-          description: Verification document uploaded successfully
+          description: Document submitted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UploadDocumentResponse'
+                $ref: '#/components/schemas/VerificationDocumentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /verification/documents/pending:
+    get:
+      tags: [Verification]
+      summary: List pending verification documents (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of pending documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationDocumentListResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /verification/documents/{id}:
+    get:
+      tags: [Verification]
+      summary: Get a single verification document by ID (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationDocumentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /verification/documents/{id}/review:
+    post:
+      tags: [Verification]
+      summary: Approve or reject a verification document (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewVerificationDocumentRequest'
+      responses:
+        '200':
+          description: Document reviewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationDocumentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
 
   /metadata/weight-classes:
     get:
@@ -1981,7 +2144,19 @@ paths:
     get:
       tags: [Admin]
       summary: Get audit logs
+      security:
+        - bearerAuth: []
       parameters:
+        - name: adminId
+          in: query
+          schema:
+            type: string
+          description: Filter by admin user ID
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: Filter by action name (e.g. approve_profile, ban_user)
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
       responses:
@@ -1991,6 +2166,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditLogListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /admin/metadata/weight-classes:
     post:
@@ -2498,24 +2677,64 @@ components:
         accountStatus:
           $ref: '#/components/schemas/AccountStatus'
 
-    CurrentUserResponse:
+    UserMeData:
       type: object
       properties:
-        success:
-          type: boolean
-        data:
-          $ref: '#/components/schemas/UserSummary'
-
-    UpdateUserRequest:
-      type: object
-      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleType'
+        accountStatus:
+          $ref: '#/components/schemas/AccountStatus'
         phone:
           type: string
         profilePhoto:
           type: string
           format: uri
         socialLinks:
-          $ref: '#/components/schemas/SocialLinks'
+          $ref: '#/components/schemas/UserSocialLinks'
+
+    UserSocialLinks:
+      type: object
+      properties:
+        instagram:
+          type: string
+          format: uri
+        youtube:
+          type: string
+          format: uri
+        twitter:
+          type: string
+          format: uri
+        facebook:
+          type: string
+          format: uri
+        tiktok:
+          type: string
+          format: uri
+
+    CurrentUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/UserMeData'
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 7
+        profilePhoto:
+          type: string
+          format: uri
+        socialLinks:
+          $ref: '#/components/schemas/UserSocialLinks'
 
     FighterRecord:
       type: object
@@ -2747,6 +2966,21 @@ components:
             pagination:
               $ref: '#/components/schemas/PaginationMeta'
 
+    DocumentEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+          nullable: true
+        fileUrl:
+          type: string
+          format: uri
+        uploadedAt:
+          type: string
+          format: date-time
+
     CoachProfile:
       allOf:
         - $ref: '#/components/schemas/BaseProfile'
@@ -2768,6 +3002,10 @@ components:
               type: array
               items:
                 type: string
+            certifications:
+              type: array
+              items:
+                $ref: '#/components/schemas/DocumentEntry'
 
     CreateCoachProfileRequest:
       type: object
@@ -2841,6 +3079,10 @@ components:
                 type: string
             availability:
               type: string
+            credentials:
+              type: array
+              items:
+                $ref: '#/components/schemas/DocumentEntry'
 
     CreateOfficialProfileRequest:
       type: object
@@ -3449,7 +3691,7 @@ components:
       properties:
         id:
           type: string
-        actorUserId:
+        adminId:
           type: string
         action:
           type: string
@@ -3457,6 +3699,9 @@ components:
           type: string
         targetId:
           type: string
+        detail:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -3605,10 +3850,11 @@ components:
 
     ReviewVerificationDocumentRequest:
       type: object
-      required: [reviewStatus]
+      required: [status]
       properties:
-        reviewStatus:
-          $ref: '#/components/schemas/VerificationDocumentStatus'
-        reviewNotes:
+        status:
+          type: string
+          enum: [approved, rejected]
+        adminNote:
           type: string
           description: Required when reviewStatus is rejected.

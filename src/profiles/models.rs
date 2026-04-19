@@ -141,6 +141,10 @@ pub struct Profile {
     pub verification_tier: VerificationTier,
     /// True only when status=approved AND visibility=public.
     pub searchable: bool,
+    /// Set to true when at least one verification document for this profile is approved.
+    /// A profile is only publicly visible when both searchable=true and has_verified_document=true.
+    #[serde(default)]
+    pub has_verified_document: bool,
     /// Denormalised from fighter weight class — enables directory filtering without a join.
     pub weight_class: Option<String>,
     pub rejection_reason: Option<String>,
@@ -186,6 +190,16 @@ pub struct GymDetails {
     pub roster_fighter_ids: Vec<String>,
 }
 
+/// Embedded in coachDetails.certifications and officialDetails.credentials arrays.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentEntry {
+    pub id: String,
+    pub label: Option<String>,
+    pub file_url: String,
+    pub uploaded_at: String,
+}
+
 /// `coachDetails` collection
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -198,6 +212,8 @@ pub struct CoachDetails {
     pub specialties: Vec<String>,
     pub linked_gym_ids: Vec<String>,
     pub associated_fighter_ids: Vec<String>,
+    #[serde(default)]
+    pub certifications: Vec<DocumentEntry>,
 }
 
 /// `officialDetails` collection
@@ -214,6 +230,8 @@ pub struct OfficialDetails {
     pub licensing_details: Option<String>,
     pub coverage_area: Vec<String>,
     pub availability: Option<String>,
+    #[serde(default)]
+    pub credentials: Vec<DocumentEntry>,
 }
 
 /// `promoterDetails` collection
@@ -331,10 +349,14 @@ pub struct UpdateFighterRequest {
     pub titles: Option<Vec<String>>,
     pub linked_gym_id: Option<String>,
     pub linked_coach_id: Option<String>,
-    pub bio: Option<String>,
-    pub location: Option<Location>,
-    pub contact_details: Option<ContactDetails>,
-    pub social_links: Option<SocialLinks>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub bio: Option<Option<String>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub location: Option<Option<Location>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub contact_details: Option<Option<ContactDetails>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub social_links: Option<Option<SocialLinks>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -370,12 +392,16 @@ pub struct UpdateGymRequest {
     #[validate(length(min = 1, max = 100))]
     pub name: Option<String>,
     pub address: Option<String>,
-    pub location: Option<Location>,
-    pub contact_details: Option<ContactDetails>,
-    pub social_links: Option<SocialLinks>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub location: Option<Option<Location>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub contact_details: Option<Option<ContactDetails>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub social_links: Option<Option<SocialLinks>>,
     pub services: Option<Vec<String>>,
     pub facilities: Option<Vec<String>>,
-    pub bio: Option<String>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub bio: Option<Option<String>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -397,13 +423,17 @@ pub struct CreateCoachRequest {
 pub struct UpdateCoachRequest {
     #[validate(length(min = 1, max = 100))]
     pub full_name: Option<String>,
-    pub bio: Option<String>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub bio: Option<Option<String>>,
     pub experience_summary: Option<String>,
     pub specialties: Option<Vec<String>>,
     pub linked_gym_ids: Option<Vec<String>>,
-    pub location: Option<Location>,
-    pub contact_details: Option<ContactDetails>,
-    pub social_links: Option<SocialLinks>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub location: Option<Option<Location>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub contact_details: Option<Option<ContactDetails>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub social_links: Option<Option<SocialLinks>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -434,10 +464,14 @@ pub struct UpdateOfficialRequest {
     pub licensing_details: Option<String>,
     pub coverage_area: Option<Vec<String>>,
     pub availability: Option<String>,
-    pub bio: Option<String>,
-    pub location: Option<Location>,
-    pub contact_details: Option<ContactDetails>,
-    pub social_links: Option<SocialLinks>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub bio: Option<Option<String>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub location: Option<Option<Location>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub contact_details: Option<Option<ContactDetails>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub social_links: Option<Option<SocialLinks>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -459,13 +493,17 @@ pub struct CreatePromoterRequest {
 pub struct UpdatePromoterRequest {
     #[validate(length(min = 1, max = 100))]
     pub organization_name: Option<String>,
-    pub contact_details: Option<ContactDetails>,
-    pub social_links: Option<SocialLinks>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub contact_details: Option<Option<ContactDetails>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub social_links: Option<Option<SocialLinks>>,
     pub coverage_areas: Option<Vec<String>>,
     pub past_events: Option<Vec<String>>,
     pub references: Option<Vec<String>>,
-    pub bio: Option<String>,
-    pub location: Option<Location>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub bio: Option<Option<String>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub location: Option<Option<Location>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -492,10 +530,14 @@ pub struct UpdateMatchmakerRequest {
     pub weight_classes_focus: Option<Vec<String>>,
     pub experience_summary: Option<String>,
     pub past_matchups: Option<Vec<String>>,
-    pub bio: Option<String>,
-    pub location: Option<Location>,
-    pub contact_details: Option<ContactDetails>,
-    pub social_links: Option<SocialLinks>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub bio: Option<Option<String>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub location: Option<Option<Location>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub contact_details: Option<Option<ContactDetails>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub social_links: Option<Option<SocialLinks>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -514,9 +556,12 @@ pub struct CreateFanRequest {
 pub struct UpdateFanRequest {
     #[validate(length(min = 1, max = 100))]
     pub display_name: Option<String>,
-    pub bio: Option<String>,
-    pub location: Option<Location>,
-    pub social_links: Option<SocialLinks>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub bio: Option<Option<String>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub location: Option<Option<Location>>,
+    #[serde(default, deserialize_with = "crate::common::serde_helpers::nullable")]
+    pub social_links: Option<Option<SocialLinks>>,
     pub favourite_weight_class: Option<String>,
 }
 
@@ -648,6 +693,7 @@ pub struct CoachProfileResponse {
     pub specialties: Vec<String>,
     pub linked_gym_ids: Vec<String>,
     pub associated_fighter_ids: Vec<String>,
+    pub certifications: Vec<DocumentEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -675,6 +721,7 @@ pub struct OfficialProfileResponse {
     pub licensing_details: Option<String>,
     pub coverage_area: Vec<String>,
     pub availability: Option<String>,
+    pub credentials: Vec<DocumentEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -833,6 +880,7 @@ impl CoachProfileResponse {
             specialties: d.specialties,
             linked_gym_ids: d.linked_gym_ids,
             associated_fighter_ids: d.associated_fighter_ids,
+            certifications: d.certifications,
         }
     }
 }
@@ -853,6 +901,7 @@ impl OfficialProfileResponse {
             licensing_details: d.licensing_details,
             coverage_area: d.coverage_area,
             availability: d.availability,
+            credentials: d.credentials,
         }
     }
 }

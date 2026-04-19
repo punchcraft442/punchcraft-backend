@@ -26,8 +26,29 @@ pub struct User {
     pub refresh_token_expires: Option<DateTime<Utc>>,
     #[serde(default)]
     pub is_suspended: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+    #[serde(rename = "profilePhoto", skip_serializing_if = "Option::is_none")]
+    pub profile_photo: Option<String>,
+    #[serde(rename = "socialLinks", skip_serializing_if = "Option::is_none")]
+    pub social_links: Option<UserSocialLinks>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UserSocialLinks {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instagram: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub youtube: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twitter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub facebook: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tiktok: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

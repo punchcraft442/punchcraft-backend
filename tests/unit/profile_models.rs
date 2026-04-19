@@ -20,6 +20,7 @@ fn make_profile(status: ProfileStatus, visibility: ProfileVisibility) -> Profile
         visibility,
         verification_tier: VerificationTier::Unverified,
         searchable: false,
+        has_verified_document: false,
         weight_class: None,
         rejection_reason: None,
         created_at: Utc::now(),

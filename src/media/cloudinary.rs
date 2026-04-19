@@ -51,21 +51,38 @@ impl CloudinaryClient {
         filename: String,
         folder: &str,
     ) -> Result<CloudinaryUploadResponse, AppError> {
+        self.upload_resource(data, filename, folder, "image").await
+    }
+
+    pub async fn upload_auto(
+        &self,
+        data: Vec<u8>,
+        filename: String,
+        folder: &str,
+    ) -> Result<CloudinaryUploadResponse, AppError> {
+        self.upload_resource(data, filename, folder, "auto").await
+    }
+
+    async fn upload_resource(
+        &self,
+        data: Vec<u8>,
+        filename: String,
+        folder: &str,
+        resource_type: &str,
+    ) -> Result<CloudinaryUploadResponse, AppError> {
         if data.is_empty() {
             return Err(AppError::BadRequest("Uploaded file is empty".into()));
         }
 
-        // Sanitize filename: keep only ASCII alphanumerics, dots, dashes, underscores.
-        // Spaces and other characters break the multipart Content-Disposition header.
-        let ext = filename.rsplit('.').next().unwrap_or("jpg");
+        let ext = filename.rsplit('.').next().unwrap_or("bin");
         let safe_filename = format!(
             "upload.{}",
             ext.chars().filter(|c| c.is_ascii_alphanumeric()).collect::<String>()
         );
 
         tracing::debug!(
-            "Cloudinary upload: {} bytes, filename={:?} -> {:?}, folder={}",
-            data.len(), filename, safe_filename, folder
+            "Cloudinary upload: {} bytes, filename={:?} -> {:?}, folder={}, resource_type={}",
+            data.len(), filename, safe_filename, folder, resource_type
         );
 
         let timestamp = Self::timestamp();
@@ -73,13 +90,13 @@ impl CloudinaryClient {
         let signature = self.sign(&params_to_sign);
 
         let url = format!(
-            "https://api.cloudinary.com/v1_1/{}/image/upload",
-            self.cloud_name
+            "https://api.cloudinary.com/v1_1/{}/{}/upload",
+            self.cloud_name, resource_type
         );
 
         let part = multipart::Part::stream(reqwest::Body::from(data))
             .file_name(safe_filename)
-            .mime_str("image/jpeg")
+            .mime_str("application/octet-stream")
             .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
         let form = multipart::Form::new()

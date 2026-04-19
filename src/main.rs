@@ -1,4 +1,4 @@
-use punchcraft::{admin, auth, common, contact_requests, directories, docs, favorites, media, moderation, notifications, profiles, verification};
+use punchcraft::{admin, auth, common, contact_requests, directories, docs, favorites, media, moderation, notifications, profiles, users, verification};
 
 use actix_cors::Cors;
 use actix_web::{http, web, App, HttpServer};
@@ -66,6 +66,7 @@ async fn main() -> anyhow::Result<()> {
             .service(
                 web::scope("/api/v1")
                     .configure(auth::routes::configure)
+                    .configure(users::routes::configure)
                     .configure(profiles::routes::configure)
                     .configure(directories::routes::configure)
                     .configure(verification::routes::configure)
