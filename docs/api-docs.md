@@ -251,6 +251,10 @@ Supported roles:
 * approved
 * rejected
 
+**Profile lifecycle:** draft → submitted → approved | rejected → draft (via request-revision)
+
+An owner can call `POST /{type}/{id}/request-revision` on any **approved** profile to revert it to draft for editing and resubmission. This sets status=draft, visibility=private, searchable=false.
+
 ## Visibility
 
 * private
@@ -259,20 +263,23 @@ Supported roles:
 ## Verification
 
 * unverified
-* tier_2_verified
-* tier_1_managed_verified
+* tier2_verified
+* tier1_managed_verified
+
+Note: no underscore before the digit — these are the exact string values used in the database and API.
 
 ---
 
 # 7. Fighter Endpoints
 
-## Create Fighter
-
-`POST /profiles/fighters`
-
-## Submit Profile
-
-`POST /profiles/fighters/{id}/submit`
+* `POST /profiles/fighters` — create (linkedGymId and linkedCoachId are optional)
+* `GET/PATCH /profiles/fighters/{id}`
+* `POST /profiles/fighters/{id}/submit`
+* `POST /profiles/fighters/{id}/request-revision` — pull approved profile back to draft
+* `POST /profiles/fighters/{id}/profile-image` — multipart, field name `file`
+* `POST /profiles/fighters/{id}/cover-image` — multipart, field name `file`
+* `POST /profiles/fighters/{id}/fight-history`
+* `DELETE /profiles/fighters/{id}/fight-history/{fightId}`
 
 ## Add Fight History
 
@@ -292,8 +299,20 @@ Supported roles:
 # 8. Gym Endpoints
 
 * `POST /profiles/gyms`
-* `POST /profiles/gyms/{gymId}/coaches/{coachId}`
-* `POST /profiles/gyms/{gymId}/fighters/{fighterId}`
+* `GET/PATCH /profiles/gyms/{id}`
+* `POST /profiles/gyms/{id}/submit`
+* `POST /profiles/gyms/{id}/request-revision`
+* `POST /profiles/gyms/{id}/profile-image`
+* `POST /profiles/gyms/{id}/cover-image`
+* `POST /profiles/gyms/{gymId}/coaches/{coachId}` — link coach (bidirectional)
+* `DELETE /profiles/gyms/{gymId}/coaches/{coachId}` — unlink coach
+* `POST /profiles/gyms/{gymId}/fighters/{fighterId}` — add fighter to roster
+* `DELETE /profiles/gyms/{gymId}/fighters/{fighterId}` — remove fighter from roster
+
+**Gym–fighter linking rules:**
+- A gym can only link a fighter who has no current gym. Returns 409 if fighter already belongs to another gym.
+- A fighter changes gyms by updating their own profile (`PATCH /profiles/fighters/{id}` with new `linkedGymId`). This auto-removes them from the old gym's roster.
+- `linkedGymId` and `linkedCoachId` are optional on fighter creation (free agents supported).
 
 ---
 

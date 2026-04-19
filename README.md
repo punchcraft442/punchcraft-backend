@@ -91,12 +91,17 @@ Full CRUD and submission workflow for all profile types.
 
 **Supported role types:** `fighter`, `gym`, `coach`, `official`, `promoter`, `matchmaker`, `fan`
 
-**Profile lifecycle:** `draft` → `submitted` → `approved` | `rejected`
+**Profile lifecycle:** `draft` → `submitted` → `approved` | `rejected` → `draft` (via request-revision)
 
 - Users create and edit profiles in `draft` state
 - Submitting sends for admin review
-- Admin approves or rejects with a reason
-- Visibility is admin-controlled only (not exposed to users)
+- Admin approves (→ public) or rejects with a reason
+- Approved profile owner can call `POST /{type}/{id}/request-revision` to pull it back to `draft` for editing and resubmission
+- `linkedGymId` and `linkedCoachId` on fighter profiles are optional — fighters can be free agents
+
+**Gym–fighter roster rules:**
+- A gym can only link a fighter who has no current gym (`POST /gyms/{id}/fighters/{fighterId}` → 409 if fighter already belongs elsewhere)
+- A fighter changes gyms by updating their own profile (`PATCH /profiles/fighters/{id}` with new `linkedGymId`) — this auto-removes them from the old gym's roster
 
 ---
 
@@ -245,16 +250,24 @@ cargo test --test integration_tests auth
 
 ---
 
-## Stub Modules (Not Yet Implemented)
+## Implemented Modules (Complete)
 
-Routes are wired but handlers are empty:
+All modules are fully implemented:
 
 | Module | Endpoints |
 |---|---|
-| `verification` | Verification document submission |
-| `moderation` | Report submission |
-| `media` | Media upload |
-| `notifications` | User notifications |
+| `auth` | Register, verify-email, login, refresh, logout, forgot/reset/change-password |
+| `profiles` | All 7 role types with CRUD, submit, request-revision, profile/cover image upload |
+| `admin` | Approval queue, approve/reject, verification tier, user management (suspend/ban/role) |
+| `directories` | Public search with role, keyword, region, city, verificationTier, weightClass filters |
+| `verification` | Submit document, list pending (admin), review (admin) |
+| `moderation` | Submit report, list all (admin), decide reviewed/dismissed (admin) |
+| `media` | Upload to Cloudinary, delete media asset |
+| `notifications` | List notifications, mark as read |
+| `contact_requests` | Send, list mine, update status (accepted/declined) |
+| `favorites` | Add, list, remove |
+
+`users` (`GET/PATCH /users/me`) is not yet implemented.
 
 ---
 

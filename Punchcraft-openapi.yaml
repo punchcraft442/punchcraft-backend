@@ -343,6 +343,79 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
 
+  /profiles/fighters/{id}/request-revision:
+    post:
+      tags: [Fighters]
+      summary: Pull approved fighter profile back to draft
+      description: Owner only. Reverts status to draft, visibility to private, searchable to false. Profile can then be edited and resubmitted.
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /profiles/fighters/{id}/profile-image:
+    post:
+      tags: [Fighters]
+      summary: Upload fighter profile image
+      description: Uploads to Cloudinary and sets profileImageUrl. Field name must be 'file'. Caller must own the profile.
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
+  /profiles/fighters/{id}/cover-image:
+    post:
+      tags: [Fighters]
+      summary: Upload fighter cover image
+      description: Uploads to Cloudinary and sets coverImageUrl. Field name must be 'file'. Caller must own the profile.
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cover image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
   /profiles/gyms:
     post:
       tags: [Gyms]
@@ -427,6 +500,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/GymProfileResponse'
 
+  /profiles/gyms/{id}/request-revision:
+    post:
+      tags: [Gyms]
+      summary: Pull approved gym profile back to draft
+      description: Owner only. Reverts status to draft, visibility to private, searchable to false.
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /profiles/gyms/{id}/profile-image:
+    post:
+      tags: [Gyms]
+      summary: Upload gym profile image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
+  /profiles/gyms/{id}/cover-image:
+    post:
+      tags: [Gyms]
+      summary: Upload gym cover image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cover image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
   /profiles/gyms/{gymId}/coaches/{coachId}:
     post:
       tags: [Gyms]
@@ -473,6 +615,7 @@ paths:
     post:
       tags: [Gyms]
       summary: Add fighter to gym roster
+      description: Bidirectional — also sets the fighter's linkedGymId to this gym. Returns 409 if the fighter already belongs to a different gym; the fighter must update their own profile to change gyms.
       parameters:
         - name: gymId
           in: path
@@ -486,11 +629,13 @@ paths:
             type: string
       responses:
         '200':
-          description: Fighter association initiated or completed
+          description: Fighter added to gym roster
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenericMessageResponse'
+        '409':
+          $ref: '#/components/responses/ConflictError'
     delete:
       tags: [Gyms]
       summary: Unlink fighter from gym roster
@@ -594,6 +739,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CoachProfileResponse'
+
+  /profiles/coaches/{id}/request-revision:
+    post:
+      tags: [Coaches]
+      summary: Pull approved coach profile back to draft
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /profiles/coaches/{id}/profile-image:
+    post:
+      tags: [Coaches]
+      summary: Upload coach profile image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
+  /profiles/coaches/{id}/cover-image:
+    post:
+      tags: [Coaches]
+      summary: Upload coach cover image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cover image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
 
   /profiles/coaches/{id}/certifications:
     post:
@@ -699,6 +912,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/OfficialProfileResponse'
 
+  /profiles/officials/{id}/request-revision:
+    post:
+      tags: [Officials]
+      summary: Pull approved official profile back to draft
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /profiles/officials/{id}/profile-image:
+    post:
+      tags: [Officials]
+      summary: Upload official profile image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
+  /profiles/officials/{id}/cover-image:
+    post:
+      tags: [Officials]
+      summary: Upload official cover image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cover image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
   /profiles/officials/{id}/credentials:
     post:
       tags: [Officials]
@@ -803,6 +1084,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/PromoterProfileResponse'
 
+  /profiles/promoters/{id}/request-revision:
+    post:
+      tags: [Promoters]
+      summary: Pull approved promoter profile back to draft
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /profiles/promoters/{id}/profile-image:
+    post:
+      tags: [Promoters]
+      summary: Upload promoter profile image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
+  /profiles/promoters/{id}/cover-image:
+    post:
+      tags: [Promoters]
+      summary: Upload promoter cover image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cover image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
   /profiles/matchmakers:
     post:
       tags: [Matchmakers]
@@ -886,6 +1235,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MatchmakerProfileResponse'
+
+  /profiles/matchmakers/{id}/request-revision:
+    post:
+      tags: [Matchmakers]
+      summary: Pull approved matchmaker profile back to draft
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /profiles/matchmakers/{id}/profile-image:
+    post:
+      tags: [Matchmakers]
+      summary: Upload matchmaker profile image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
+  /profiles/matchmakers/{id}/cover-image:
+    post:
+      tags: [Matchmakers]
+      summary: Upload matchmaker cover image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cover image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
 
   /profiles/fans:
     post:
@@ -971,6 +1388,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FanProfileResponse'
+
+  /profiles/fans/{id}/request-revision:
+    post:
+      tags: [Fans]
+      summary: Pull approved fan profile back to draft
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      responses:
+        '200':
+          description: Profile reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /profiles/fans/{id}/profile-image:
+    post:
+      tags: [Fans]
+      summary: Upload fan profile image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
+
+  /profiles/fans/{id}/cover-image:
+    post:
+      tags: [Fans]
+      summary: Upload fan cover image
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cover image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummaryDataResponse'
 
   /directories:
     get:
@@ -1230,7 +1715,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/VerificationTierListResponse'
 
-  /admin/approval-queue:
+  /admin/profiles/queue:
     get:
       tags: [Admin]
       summary: Get approval queue
@@ -1301,16 +1786,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileApprovalResponse'
 
-  /admin/profiles/{profileId}/verification-tier:
+  /admin/profiles/{id}/verify:
     patch:
       tags: [Admin]
       summary: Assign verification tier to profile
+      description: "tier must be one of: unverified | tier2_verified | tier1_managed_verified"
       parameters:
-        - name: profileId
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/IdPathParam'
       requestBody:
         required: true
         content:
@@ -1628,14 +2110,32 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    BadRequestError:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     UnauthorizedError:
       description: Unauthorized
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    ForbiddenError:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     NotFoundError:
       description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ConflictError:
+      description: Conflict — resource already exists or state prevents the action
       content:
         application/json:
           schema:
@@ -1829,6 +2329,15 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    ProfileSummaryDataResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/ProfileSummary'
 
     ProfileSummary:
       type: object

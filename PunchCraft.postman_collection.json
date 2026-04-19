@@ -209,7 +209,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"bio\": \"Updated bio.\",\n  \"weightClass\": \"welterweight\",\n  \"linkedGymId\": \"{{gymId}}\",\n  \"linkedCoachId\": \"{{coachId}}\"\n}"
+              "raw": "{\n  \"bio\": \"Updated bio.\",\n  \"weightClass\": \"welterweight\",\n  \"linkedGymId\": \"{{gymId}}\",\n  \"linkedCoachId\": \"{{coachId}}\"\n}",\n              "description": "linkedGymId and linkedCoachId are optional (fighter can be a free agent). Changing linkedGymId automatically removes the fighter from the old gym's roster and adds them to the new one."
             }
           }
         },
@@ -417,7 +417,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["profiles", "gyms", "{{gymId}}", "fighters", "{{fighterId}}"]
             },
-            "description": "Bidirectional: also sets the fighter's linkedGymId to this gym."
+            "description": "Bidirectional: also sets the fighter's linkedGymId to this gym. Returns 409 if the fighter already belongs to a different gym — the fighter must update their own profile (PATCH /profiles/fighters/{id}) to change gyms."
           }
         },
         {
